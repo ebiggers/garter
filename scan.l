@@ -9,7 +9,6 @@
 %option bison-locations
 %option nodefault
 %option noyywrap
-%option prefix="garter_"
 %option reentrant
 %option warn
 %option yylineno

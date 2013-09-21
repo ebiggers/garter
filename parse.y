@@ -1,14 +1,14 @@
 %define api.pure full
-%name-prefix "garter_"
 %locations
+%parse-param { void * ctx }
+%lex-param   { ctx }
 
 %{
 #define YYSTYPE int
-#define YYPARSE_PARAM yyscan_t scanner
-#define YYLEX_PARAM scanner
 #include "parse.h"
 #include "scan.h"
-void yyerror(YYLTYPE *, const char *);
+void yyerror(YYLTYPE *, yyscan_t scan_ctx, const char *);
+#define scanner ctx->scanner
 %}
 
 %token TOK_AND
@@ -209,7 +209,7 @@ nonempty_parameters:  TOK_IDENTIFIER { }
 
 %%
 
-void yyerror(YYLTYPE *locp, const char *msg)
+void yyerror(YYLTYPE *locp, yyscan_t scan_ctx, const char *msg)
 {
 	
 }
