@@ -1,32 +1,39 @@
-OBJ := scan.o parse.o frontend.o main.o
-CFLAGS := -Wall -O2
-CC := clang
-EXE := garterc
+CC     := clang
+CFLAGS := -Wall -O0 -g
+EXE    := garterc
+FRONTEND_DIR := frontend
+FRONTEND_OBJ := scan.o parse.o frontend.o
+BISON := bison --debug
+FLEX := flex
+
+OBJ := $(addprefix $(FRONTEND_DIR)/,$(FRONTEND_OBJ)) main.o
 
 all:$(EXE)
 
 $(EXE):$(OBJ)
 	$(CC) -o $@ $(LDFLAGS) $+ $(LDLIBS)
 
-scan.c:scan.l
-	flex -o $@ --header-file=scan.h $+
+$(FRONTEND_DIR)/scan.c:$(FRONTEND_DIR)/scan.l
+	$(FLEX) -o $@ --header-file=$(FRONTEND_DIR)/scan.h $+
 
-scan.h:scan.c
+$(FRONTEND_DIR)/scan.o:$(FRONTEND_DIR)/scan.c $(FRONTEND_DIR)/parse.h
+
+$(FRONTEND_DIR)/scan.h:$(FRONTEND_DIR)/scan.c
 	@touch $@
 
-scan.o:scan.c parse.h
+$(FRONTEND_DIR)/parse.c:$(FRONTEND_DIR)/parse.y
+	$(BISON) -d -o $@ $+
 
-frontend.o:frontend.c
+$(FRONTEND_DIR)/parse.o:$(FRONTEND_DIR)/parse.c $(FRONTEND_DIR)/scan.h
 
-parse.o:parse.c parse.h scan.h
-
-parse.c:parse.y
-	bison -d -o $@ $+
-
-parse.h:parse.c
+$(FRONTEND_DIR)/parse.h:$(FRONTEND_DIR)/parse.c
 	@touch $@
 
 clean:
-	rm -f scan.c parse.c parse.h scan.h $(EXE) $(OBJ) tags cscope*
+	rm -f $(FRONTEND_DIR)/scan.c    \
+	      $(FRONTEND_DIR)/parse.c   \
+	      $(FRONTEND_DIR)/parse.h   \
+	      $(FRONTEND_DIR)/scan.h    \
+	      $(EXE) $(OBJ) tags cscope*
 
 .PHONY: clean all

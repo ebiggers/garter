@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "frontend.h"
+#include "frontend/frontend.h"
 
 int main(int argc, char **argv)
 {

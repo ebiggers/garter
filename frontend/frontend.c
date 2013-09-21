@@ -1,6 +1,6 @@
 #include "frontend.h"
-#include "parse.h"
 #include "parse_state.h"
+#include "parse.h"
 #include "scan.h"
 
 #include <stdio.h>

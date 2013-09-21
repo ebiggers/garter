@@ -1,6 +1,7 @@
  /* Definitions section  */
 
 %{
+	struct parse_state;
 	#include "parse.h"
 	#define YY_USER_ACTION yylloc->first_line = yylineno;
 %}

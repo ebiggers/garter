@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stddef.h>
 
 struct ast_node {

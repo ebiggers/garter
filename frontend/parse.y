@@ -1,15 +1,19 @@
 %define api.pure full
 %locations
-%parse-param { void * ctx }
-%lex-param   { ctx }
 
 %{
 #define YYSTYPE int
+#include "parse_state.h"
 #include "parse.h"
 #include "scan.h"
-void yyerror(YYLTYPE *, yyscan_t scan_ctx, const char *);
+#include <stdio.h>
+void yyerror(YYLTYPE *, struct parse_state *, const char *);
 #define scanner ctx->scanner
 %}
+
+
+%parse-param { struct parse_state * ctx }
+%lex-param   { scanner }
 
 %token TOK_AND
 %token TOK_ASSIGNMENT
@@ -209,7 +213,8 @@ nonempty_parameters:  TOK_IDENTIFIER { }
 
 %%
 
-void yyerror(YYLTYPE *locp, yyscan_t scan_ctx, const char *msg)
+void yyerror(YYLTYPE *locp, struct parse_state *ctx, const char *msg)
 {
-	
+	fprintf(stderr, "%s:%d:%d: %s\n", ctx->filename,
+		locp->first_line, locp->first_column, msg);
 }
