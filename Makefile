@@ -18,6 +18,8 @@ $(FRONTEND_DIR)/scan.c:$(FRONTEND_DIR)/scan.l
 
 $(FRONTEND_DIR)/scan.o:$(FRONTEND_DIR)/scan.c $(FRONTEND_DIR)/parse.h
 
+$(FRONTEND_DIR)/frontend.o:$(FRONTEND_DIR)/frontend.c $(FRONTEND_DIR)/parse.h $(FRONTEND_DIR)/scan.h
+
 $(FRONTEND_DIR)/scan.h:$(FRONTEND_DIR)/scan.c
 	@touch $@
 

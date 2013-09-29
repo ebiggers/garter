@@ -1,11 +1,21 @@
 %define api.pure full
 %locations
 
+%code top {
+	#include "parse_state.h"
+}
+
+%union {
+	struct ast_node *ast_node;
+	int ival;
+}
+
+%type <ast_node> program toplevel_items toplevel_item stmt stmt_seq simple_stmt assignment_stmt target print_stmt return_stmt compound_stmt if_stmt elif_clauses while_stmt for_stmt expr or_expr and_expr not_expr comparison comp_operator add_expr mult_expr unary_expr power_expr primary atom paren_expr list_expr expr_seq nonempty_expr_seq subscription subscripts call func_def parameters nonempty_parameters
+
 %{
-#define YYSTYPE int
-#include "parse_state.h"
 #include "parse.h"
 #include "scan.h"
+#include "frontend.h"
 #include <stdio.h>
 void yyerror(YYLTYPE *, struct parse_state *, const char *);
 #define scanner ctx->scanner
@@ -60,11 +70,17 @@ void yyerror(YYLTYPE *, struct parse_state *, const char *);
 %%
 /* Grammar rules and actions  */
 
-program:  toplevel_items
+program:  toplevel_items { $$ = $1; }
        ;
 
-toplevel_items:  toplevel_item toplevel_items { }
-	       | { }
+toplevel_items:  toplevel_item toplevel_items
+		{
+			$$ = ast_node_append_child($2, $1);
+		}
+	       |
+		{
+			$$ = NULL;
+		}
 	       ;
 
 toplevel_item:  stmt { }
@@ -92,10 +108,16 @@ target:  TOK_IDENTIFIER { }
        | subscription { }
        ;
 
-print_stmt:  TOK_PRINT expr_seq { }
+print_stmt:  TOK_PRINT expr_seq
+	  { 
+		$$ = new_ast_node_with_child(AST_PRINT_STMT, $2);
+	  }
 	   ;
 
-return_stmt:  TOK_RETURN expr { }
+return_stmt:  TOK_RETURN expr
+	   {
+		$$ = new_ast_node_with_child(AST_RETURN_STMT, $2);
+	   }
 	    ;
 
 compound_stmt:  if_stmt { }
