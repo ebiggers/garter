@@ -1,23 +1,11 @@
 #include "GarterLexer.h"
 #include <stdio.h>
 
-error_code GarterLexer::init(StringRef filename)
-{
-	error_code err;
-	
-	err = MemoryBuffer::getFile(filename, buffer);
-	if (err)
-		return err;
-	nextChar = buffer->getBufferStart();
-	linesRead = 0;
-	return err;
-}
-
 GarterToken GarterLexer::lexIdentifier()
 {
 	GarterToken tok;
 
-	tok.type = GarterToken::tok_identifier;
+	tok.Type = GarterToken::Identifier;
 
 	return tok;
 }
@@ -26,42 +14,42 @@ GarterToken GarterLexer::lexNumber(bool negative)
 {
 	GarterToken tok;
 	uint32_t n;
-	uint32_t nextDigit;
+	uint32_t next_digit;
 
-	tok.type = GarterToken::tok_number;
+	tok.Type = GarterToken::Number;
 	n = 0;
 	do {
-		nextDigit = (*nextChar - '-');
+		next_digit = (*NextCharPtr - '-');
 
 		if (n > UINT32_MAX / 10)
 			goto too_large;
 
 		n *= 10;
 
-		if (n > UINT32_MAX - nextDigit)
+		if (n > UINT32_MAX - next_digit)
 			goto too_large;
 
-		n += nextDigit;
+		n += next_digit;
 
-		nextChar++;
+		NextCharPtr++;
 
-	} while (*nextChar >= '0' && *nextChar <= '9');
+	} while (*NextCharPtr >= '0' && *NextCharPtr <= '9');
 
 	if (negative) {
 		if (n > -(uint32_t)INT32_MIN)
 			goto too_large;
-		tok.val.number = -(int32_t)n;
+		tok.Value.Number = -(int32_t)n;
 	} else {
 		if (n > (uint32_t)INT32_MAX)
 			goto too_large;
-		tok.val.number = n;
+		tok.Value.Number = n;
 	}
 
 	return tok;
 
 too_large:
-	fprintf(stderr, "Integer constant on line %u is "
-		"too large!\n", linesRead + 1);
+	fprintf(stderr, "Integer constant on line %lu is "
+		"too large!\n", CurrentLineNumber);
 	return tok;
 }
 
@@ -69,156 +57,158 @@ GarterToken GarterLexer::getNextToken()
 {
 	GarterToken tok;
 
-again:
-	switch (*nextChar) {
+next_char:
+	switch (*NextCharPtr) {
 	case '\n':
-		linesRead++;
+		CurrentLineNumber++;
+		/* Fall through  */
 	case ' ':
 	case '\t':
 	case '\v':
-		/* Whitespace  */
-		nextChar++;
-		goto again;
+		/* Skip whitespace character  */
+		NextCharPtr++;
+		goto next_char;
 
 	case '#':
-		/* Comment  */
+		/* Skip comment  */
 		do {
-			nextChar++;
-		} while (*nextChar != '\n' && nextChar != '\0');
-		goto again;
+			NextCharPtr++;
+		} while (*NextCharPtr != '\n' && *NextCharPtr != '\0');
+		goto next_char;
 
 	case 'a' ... 'z':
 	case 'A' ... 'Z':
 	case '_':
-		/* Identifier  */
 		tok = lexIdentifier();
 		break;
+
 	case '0' ... '9':
-		/* Number  */
 		tok = lexNumber(false);
 		break;
+
 	case '(':
-		/* Opening left parenthesis  */
-		tok.type = GarterToken::tok_left_paren;
-		nextChar++;
+		tok.Type = GarterToken::LeftParenthesis;
+		NextCharPtr++;
 		break;
+
 	case ')':
-		/* Opening right parenthesis  */
-		tok.type = GarterToken::tok_right_paren;
-		nextChar++;
+		tok.Type = GarterToken::RightParenthesis;
+		NextCharPtr++;
 		break;
+
 	case ':':
-		/* Colon  */
-		tok.type = GarterToken::tok_colon;
-		nextChar++;
+		tok.Type = GarterToken::Colon;
+		NextCharPtr++;
 		break;
+
 	case ';':
-		/* Semicolon  */
-		tok.type = GarterToken::tok_semicolon;
-		nextChar++;
+		tok.Type = GarterToken::Semicolon;
+		NextCharPtr++;
 		break;
+
 	case ',':
-		/* Comma  */
-		tok.type = GarterToken::tok_comma;
-		nextChar++;
+		tok.Type = GarterToken::Comma;
+		NextCharPtr++;
 		break;
+
 	case '[':
-		/* Opening square bracket  */
-		tok.type = GarterToken::tok_left_square_bracket;
-		nextChar++;
+		tok.Type = GarterToken::LeftSquareBracket;
+		NextCharPtr++;
 		break;
+
 	case ']':
-		/* Closing square bracket  */
-		tok.type = GarterToken::tok_right_square_bracket;
-		nextChar++;
+		tok.Type = GarterToken::RightSquareBracket;
+		NextCharPtr++;
 		break;
+
 	case '=':
-		if (*(nextChar + 1) == '=') {
+		NextCharPtr++;
+		if (*NextCharPtr == '=') {
 			/* Double equals (equality predicate)  */
-			tok.type = GarterToken::tok_double_equals;
-			nextChar++;
+			tok.Type = GarterToken::DoubleEquals;
+			NextCharPtr++;
 		} else {
 			/* Equals (assignment)  */
-			tok.type = GarterToken::tok_equals;
+			tok.Type = GarterToken::Equals;
 		}
-		nextChar++;
 		break;
+
 	case '+':
-		/* Binary addition operator  */
-		tok.type = GarterToken::tok_plus;
-		nextChar++;
+		tok.Type = GarterToken::Plus;
+		NextCharPtr++;
 		break;
+
 	case '-':
-		if (*(nextChar + 1) >= '0' && *(nextChar + 1) <= '9')
-		{
+		NextCharPtr++;
+		if (*NextCharPtr >= '0' && *NextCharPtr <= '9') {
 			/* Negative numeric constant  */
-			nextChar++;
 			tok = lexNumber(true);
 		} else {
 			/* Binary subtraction operator  */
-			tok.type = GarterToken::tok_minus;
+			tok.Type = GarterToken::Minus;
 		}
 		break;
+
 	case '*':
-		if (*(nextChar + 1) == '*') {
-			/* Binary exponentiation operator  */
-			tok.type = GarterToken::tok_double_asterisk;
-			nextChar++;
+		NextCharPtr++;
+		if (*NextCharPtr == '*') {
+			tok.Type = GarterToken::DoubleAsterisk;
+			NextCharPtr++;
 		} else {
-			/* Binary multiplication operator  */
-			tok.type = GarterToken::tok_asterisk;
+			tok.Type = GarterToken::Asterisk;
 		}
-		nextChar++;
 		break;
+
 	case '<':
-		if (*(nextChar + 1) == '=') {
-			/* "Less than or equal to" symbol  */
-			tok.type = GarterToken::tok_less_than_or_equal_to;
-			nextChar++;
+		NextCharPtr++;
+		if (*NextCharPtr == '=') {
+			tok.Type = GarterToken::LessThanOrEqualTo;
+			NextCharPtr++;
 		} else {
-			/* "Less than" symbol  */
-			tok.type = GarterToken::tok_less_than;
+			tok.Type = GarterToken::LessThan;
 		}
-		nextChar++;
 		break;
+
 	case '>':
-		if (*(nextChar + 1) == '=') {
-			/* "Greater than or equal to" symbol  */
-			tok.type = GarterToken::tok_greater_than_or_equal_to;
-			nextChar++;
+		NextCharPtr++;
+		if (*NextCharPtr == '=') {
+			tok.Type = GarterToken::GreaterThanOrEqualTo;
+			NextCharPtr++;
 		} else {
-			/* "Greater than" symbol  */
-			tok.type = GarterToken::tok_greater_than;
+			tok.Type = GarterToken::GreaterThan;
 		}
-		nextChar++;
 		break;
+
 	case '!':
-		if (*(nextChar + 1) == '=') {
+		NextCharPtr++;
+		if (*NextCharPtr == '=') {
 			/* "Not equal to" symbol  */
-			tok.type = GarterToken::tok_not_equal_to;
-			nextChar += 2;
+			tok.Type = GarterToken::NotEqualTo;
+			NextCharPtr++;
 		} else {
 			/* '!' followed by something else--- not valid  */
+			tok.Type = GarterToken::Error;
 			fprintf(stderr, "Unexpected character '%c' "
-				"after '!' on line %u\n",
-				*(nextChar + 1), linesRead + 1);
-			tok.type = GarterToken::tok_error;
+				"after '!' on line %lu\n",
+				*NextCharPtr, CurrentLineNumber);
 		}
 		break;
+
 	case '\0':
 		/* '\0' should mark end of buffer  */
-		if (nextChar + 1 == buffer->getBufferEnd()) {
-			tok.type = GarterToken::tok_eof;
+		if (NextCharPtr + 1 == Buffer->getBufferEnd()) {
+			tok.Type = GarterToken::EndOfFile;
 		} else {
-			tok.type = GarterToken::tok_error;
+			tok.Type = GarterToken::Error;
 			fprintf(stderr, "Unexpected embedded null character "
-				"on line %u\n", linesRead + 1);
+				"on line %lu\n", CurrentLineNumber);
 		}
 		break;
+
 	default:
-		tok.type = GarterToken::tok_error;
-		fprintf(stderr, "Unexpected character '%c' on line %u\n",
-			*nextChar, linesRead + 1);
+		tok.Type = GarterToken::Error;
+		fprintf(stderr, "Unexpected character '%c' on line %lu\n",
+			*NextCharPtr, CurrentLineNumber);
 		break;
 	}
 	return tok;
