@@ -8,44 +8,55 @@
 class GarterToken {
 public:
 	enum TokenType {
-		Error,
-		Identifier,
-		Number,
-		LeftParenthesis,
-		RightParenthesis,
-		Colon,
-		Semicolon,
-		Comma,
-		LeftSquareBracket,
-		RightSquareBracket,
-		Equals,
-		Plus,
-		Minus,
+		EndOfFile = -1,
+		Error = 0,
 		Asterisk,
-		ForwardSlash,
-		Percent,
+		Colon,
+		Comma,
 		DoubleAsterisk,
-		LessThan,
-		GreaterThan,
-		LessThanOrEqualTo,
-		GreaterThanOrEqualTo,
 		DoubleEquals,
+		Equals,
+		ForwardSlash,
+		GreaterThan,
+		GreaterThanOrEqualTo,
+		Identifier,
+		LeftParenthesis,
+		LeftSquareBracket,
+		LessThan,
+		LessThanOrEqualTo,
+		Minus,
 		NotEqualTo,
-		EndOfFile,
+		Number,
+		Percent,
+		Plus,
+		RightParenthesis,
+		RightSquareBracket,
+		Semicolon,
 	} Type;
 
 	union {
 		int32_t Number;
+		const char *Name;
 	} Value;
 
-	GarterToken(enum TokenType type) {
+	explicit GarterToken(enum TokenType type) {
 		Type = type;
-		Value.Number = 0;
+		Value.Name = NULL;
 	}
 
-	GarterToken() {
+	explicit GarterToken(enum TokenType type, const char *name) {
+		Type = type;
+		Value.Name = name;
+	}
+
+	explicit GarterToken(enum TokenType type, int32_t number) {
+		Type = type;
+		Value.Number = number;
+	}
+
+	explicit GarterToken() {
 		Type = GarterToken::Error;
-		Value.Number = 0;
+		Value.Name = NULL;
 	}
 
 	~GarterToken() {
@@ -60,7 +71,7 @@ private:
 
 	static const char * const Tag;
 
-	GarterToken lexNumber(bool negative);
+	GarterToken lexNumber();
 	GarterToken lexIdentifier();
 
 public:

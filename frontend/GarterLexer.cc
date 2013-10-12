@@ -1,34 +1,60 @@
 #include "GarterLexer.h"
 #include <stdio.h>
+#include <string.h>
 
 const char * const GarterLexer::Tag = "GarterLexer";
+
+enum CharType {
+	LOWER_CASE = 0x01,
+	UPPER_CASE = 0x02,
+	UNDERSCORE = 0x04,
+	NUMBER     = 0x08,
+};
+
+static const uint8_t CharTab[256] = {
+	['a' ... 'z'] = LOWER_CASE,
+	['A' ... 'Z'] = UPPER_CASE,
+	['_']         = UNDERSCORE,
+	['0' ... '9'] = NUMBER,
+};
 
 GarterToken GarterLexer::lexIdentifier()
 {
 	GarterToken tok;
+	const char *start;
+	size_t len;
+	char *name;
 
+	start = NextCharPtr;
 	tok.Type = GarterToken::Identifier;
 
+	do {
+		NextCharPtr++;
+	} while (CharTab[(uint8_t)*NextCharPtr] & (LOWER_CASE | UPPER_CASE |
+						   UNDERSCORE | NUMBER));
+	len = NextCharPtr - start;
+
+	name = new char[len + 1];
+	memcpy(name, start, len);
+	name[len] = '\0';
+	tok.Value.Name = name;
 	return tok;
 }
 
-GarterToken GarterLexer::lexNumber(bool negative)
+GarterToken GarterLexer::lexNumber()
 {
-	GarterToken tok;
-	uint32_t n;
-	uint32_t next_digit;
+	GarterToken tok(GarterToken::Number);
+	int32_t n = 0;
 
-	tok.Type = GarterToken::Number;
-	n = 0;
 	do {
-		next_digit = (*NextCharPtr - '-');
+		int32_t next_digit = (*NextCharPtr - '0');
 
-		if (n > UINT32_MAX / 10)
+		if (n > INT32_MAX / 10)
 			goto too_large;
 
 		n *= 10;
 
-		if (n > UINT32_MAX - next_digit)
+		if (n > INT32_MAX - next_digit)
 			goto too_large;
 
 		n += next_digit;
@@ -37,21 +63,14 @@ GarterToken GarterLexer::lexNumber(bool negative)
 
 	} while (*NextCharPtr >= '0' && *NextCharPtr <= '9');
 
-	if (negative) {
-		if (n > -(uint32_t)INT32_MIN)
-			goto too_large;
-		tok.Value.Number = -(int32_t)n;
-	} else {
-		if (n > (uint32_t)INT32_MAX)
-			goto too_large;
-		tok.Value.Number = n;
-	}
+	tok.Value.Number = n;
 
 	return tok;
 
 too_large:
 	fprintf(stderr, "%s: Integer constant on line %lu is "
 		"too large!\n", Tag, CurrentLineNumber);
+	tok.Type = GarterToken::Error;
 	return tok;
 }
 
@@ -85,7 +104,7 @@ next_char:
 		break;
 
 	case '0' ... '9':
-		tok = lexNumber(false);
+		tok = lexNumber();
 		break;
 
 	case '(':
@@ -141,14 +160,8 @@ next_char:
 		break;
 
 	case '-':
+		tok.Type = GarterToken::Minus;
 		NextCharPtr++;
-		if (*NextCharPtr >= '0' && *NextCharPtr <= '9') {
-			/* Negative numeric constant  */
-			tok = lexNumber(true);
-		} else {
-			/* Binary subtraction operator  */
-			tok.Type = GarterToken::Minus;
-		}
 		break;
 
 	case '*':
@@ -159,6 +172,16 @@ next_char:
 		} else {
 			tok.Type = GarterToken::Asterisk;
 		}
+		break;
+
+	case '/':
+		tok.Type = GarterToken::ForwardSlash;
+		NextCharPtr++;
+		break;
+
+	case '%':
+		tok.Type = GarterToken::Percent;
+		NextCharPtr++;
 		break;
 
 	case '<':
