@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -Wall -Wextra -O0 -g
+CXXFLAGS := -Wall -Wextra -O0 -g -MMD
 CPPFLAGS := -I. -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
 LDLIBS := -lLLVMSupport -lpthread -ldl
 COMPILER_EXE := garterc
@@ -18,15 +18,21 @@ COMPILER_OBJ := $(FRONTEND_OBJ) $(TOPLEVEL_OBJ)
 
 OBJ := $(COMPILER_OBJ) $(TEST_OBJ)
 
+DEP := $(OBJ:%.o=%.d)
+
 EXE := $(COMPILER_EXE) $(TEST_EXE)
 
+
 all:$(COMPILER_EXE)
+
+-include $(DEP)
 
 $(COMPILER_EXE):$(COMPILER_OBJ)
 	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 $(OBJ): %.o : %.cc
-	$(CXX) -c -o $@ $(CXXFLAGS) $(CPPFLAGS) $+
+	$(CXX) -o $@ -c $(CXXFLAGS) $(DEPFLAGS) $(CPPFLAGS) $<
+
 
 test:$(TEST_EXE)
 	for testprog in $(TEST_EXE); do		\
@@ -37,6 +43,6 @@ $(TEST_EXE): %:%.o $(FRONTEND_OBJ)
 	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm -f $(EXE) $(OBJ) tags cscope*
+	rm -f $(EXE) $(OBJ) $(DEP) tags cscope*
 
 .PHONY: clean all test

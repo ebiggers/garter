@@ -1,6 +1,8 @@
 #include "GarterLexer.h"
 #include <stdio.h>
 
+const char * const GarterLexer::Tag = "GarterLexer";
+
 GarterToken GarterLexer::lexIdentifier()
 {
 	GarterToken tok;
@@ -48,8 +50,8 @@ GarterToken GarterLexer::lexNumber(bool negative)
 	return tok;
 
 too_large:
-	fprintf(stderr, "Integer constant on line %lu is "
-		"too large!\n", CurrentLineNumber);
+	fprintf(stderr, "%s: Integer constant on line %lu is "
+		"too large!\n", Tag, CurrentLineNumber);
 	return tok;
 }
 
@@ -188,27 +190,28 @@ next_char:
 		} else {
 			/* '!' followed by something else--- not valid  */
 			tok.Type = GarterToken::Error;
-			fprintf(stderr, "Unexpected character '%c' "
+			fprintf(stderr, "%s: Unexpected character '%c' "
 				"after '!' on line %lu\n",
-				*NextCharPtr, CurrentLineNumber);
+				Tag, *NextCharPtr, CurrentLineNumber);
 		}
 		break;
 
 	case '\0':
 		/* '\0' should mark end of buffer  */
-		if (NextCharPtr + 1 == Buffer->getBufferEnd()) {
+		if (NextCharPtr == Buffer->getBufferEnd()) {
 			tok.Type = GarterToken::EndOfFile;
 		} else {
 			tok.Type = GarterToken::Error;
-			fprintf(stderr, "Unexpected embedded null character "
-				"on line %lu\n", CurrentLineNumber);
+			fprintf(stderr, "%s: Unexpected embedded null "
+				"character on line %lu\n",
+				Tag, CurrentLineNumber);
 		}
 		break;
 
 	default:
 		tok.Type = GarterToken::Error;
-		fprintf(stderr, "Unexpected character '%c' on line %lu\n",
-			*NextCharPtr, CurrentLineNumber);
+		fprintf(stderr, "%s: Unexpected character '%c' on line %lu\n",
+			Tag, *NextCharPtr, CurrentLineNumber);
 		break;
 	}
 	return tok;

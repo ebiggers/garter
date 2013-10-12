@@ -3,6 +3,7 @@
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
+#include <stdio.h>
 
 class GarterToken {
 public:
@@ -57,12 +58,20 @@ private:
 	const char *NextCharPtr;
 	unsigned long CurrentLineNumber;
 
+	static const char * const Tag;
+
 	GarterToken lexNumber(bool negative);
 	GarterToken lexIdentifier();
 
 public:
-	GarterLexer(llvm::MemoryBuffer *buffer) : Buffer(buffer) { }
-	~GarterLexer() { }
+	GarterLexer(llvm::MemoryBuffer *buffer) {
+		Buffer = buffer;
+		NextCharPtr = buffer->getBufferStart();
+		CurrentLineNumber = 1;
+	}
+
+	~GarterLexer() {
+	}
 
 	GarterToken getNextToken();
 };
