@@ -1,5 +1,5 @@
 CXX := clang++
-CXXFLAGS := -Wall -Wextra -O0 -g -MMD
+CXXFLAGS := -Wall -Wextra -O0 -g -MMD -std=c++11
 CPPFLAGS := -I. -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
 LDLIBS := -lLLVMSupport -lpthread -ldl
 COMPILER_EXE := garterc

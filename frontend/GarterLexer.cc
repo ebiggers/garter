@@ -18,7 +18,7 @@ static const uint8_t CharTab[256] = {
 	['0' ... '9'] = NUMBER,
 };
 
-GarterToken GarterLexer::lexIdentifier()
+GarterToken GarterLexer::lexIdentifierOrKeyword()
 {
 	GarterToken tok;
 	const char *start;
@@ -37,7 +37,15 @@ GarterToken GarterLexer::lexIdentifier()
 	name = new char[len + 1];
 	memcpy(name, start, len);
 	name[len] = '\0';
-	tok.Value.Name = name;
+
+	auto it = Keywords.find(name);
+	if (it == Keywords.end()) {
+		tok.Value.Name = name;
+	} else {
+		tok = it->second;
+		delete name;
+	}
+
 	return tok;
 }
 
@@ -100,7 +108,7 @@ next_char:
 	case 'a' ... 'z':
 	case 'A' ... 'Z':
 	case '_':
-		tok = lexIdentifier();
+		tok = lexIdentifierOrKeyword();
 		break;
 
 	case '0' ... '9':

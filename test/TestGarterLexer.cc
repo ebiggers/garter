@@ -92,6 +92,17 @@ static const struct LexerTestCase {
 		},
 	},
 	{
+		.Input = "if if0 for while",
+		.ExpectedOutput =
+		{
+			GarterToken(GarterToken::If),
+			GarterToken(GarterToken::Identifier, "if0"),
+			GarterToken(GarterToken::For),
+			GarterToken(GarterToken::While),
+			GarterToken(GarterToken::EndOfFile),
+		},
+	},
+	{
 		.Input = "-10**2 + 3/b",
 		.ExpectedOutput =
 		{
