@@ -1,8 +1,10 @@
-#include "GarterLexer.h"
+#include "Lexer.h"
 #include <stdio.h>
 #include <string.h>
 
-const char * const GarterLexer::Tag = "GarterLexer";
+using namespace garter;
+
+const char * const Lexer::Tag = "Lexer";
 
 enum CharType {
 	LOWER_CASE = 0x01,
@@ -18,15 +20,15 @@ static const uint8_t CharTab[256] = {
 	['0' ... '9'] = NUMBER,
 };
 
-GarterToken GarterLexer::lexIdentifierOrKeyword()
+Token Lexer::lexIdentifierOrKeyword()
 {
-	GarterToken tok;
+	Token tok;
 	const char *start;
 	size_t len;
 	char *name;
 
 	start = NextCharPtr;
-	tok.Type = GarterToken::Identifier;
+	tok.Type = Token::Identifier;
 
 	do {
 		NextCharPtr++;
@@ -49,9 +51,9 @@ GarterToken GarterLexer::lexIdentifierOrKeyword()
 	return tok;
 }
 
-GarterToken GarterLexer::lexNumber()
+Token Lexer::lexNumber()
 {
-	GarterToken tok(GarterToken::Number);
+	Token tok(Token::Number);
 	int32_t n = 0;
 
 	do {
@@ -78,28 +80,28 @@ GarterToken GarterLexer::lexNumber()
 too_large:
 	fprintf(stderr, "%s: Integer constant on line %lu is "
 		"too large!\n", Tag, CurrentLineNumber);
-	tok.Type = GarterToken::Error;
+	tok.Type = Token::Error;
 	return tok;
 }
 
-GarterToken GarterLexer::getNextToken()
+Token Lexer::getNextToken()
 {
-	GarterToken tok;
+	Token tok;
 
 next_char:
 	switch (*NextCharPtr) {
 	case '\n':
 		CurrentLineNumber++;
-		/* Fall through  */
+		// Fall through
 	case ' ':
 	case '\t':
 	case '\v':
-		/* Skip whitespace character  */
+		// Skip whitespace character
 		NextCharPtr++;
 		goto next_char;
 
 	case '#':
-		/* Skip comment  */
+		// Skip comment
 		do {
 			NextCharPtr++;
 		} while (*NextCharPtr != '\n' && *NextCharPtr != '\0');
@@ -116,111 +118,111 @@ next_char:
 		break;
 
 	case '(':
-		tok.Type = GarterToken::LeftParenthesis;
+		tok.Type = Token::LeftParenthesis;
 		NextCharPtr++;
 		break;
 
 	case ')':
-		tok.Type = GarterToken::RightParenthesis;
+		tok.Type = Token::RightParenthesis;
 		NextCharPtr++;
 		break;
 
 	case ':':
-		tok.Type = GarterToken::Colon;
+		tok.Type = Token::Colon;
 		NextCharPtr++;
 		break;
 
 	case ';':
-		tok.Type = GarterToken::Semicolon;
+		tok.Type = Token::Semicolon;
 		NextCharPtr++;
 		break;
 
 	case ',':
-		tok.Type = GarterToken::Comma;
+		tok.Type = Token::Comma;
 		NextCharPtr++;
 		break;
 
 	case '[':
-		tok.Type = GarterToken::LeftSquareBracket;
+		tok.Type = Token::LeftSquareBracket;
 		NextCharPtr++;
 		break;
 
 	case ']':
-		tok.Type = GarterToken::RightSquareBracket;
+		tok.Type = Token::RightSquareBracket;
 		NextCharPtr++;
 		break;
 
 	case '=':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			/* Double equals (equality predicate)  */
-			tok.Type = GarterToken::DoubleEquals;
+			// Double equals (equality predicate)
+			tok.Type = Token::DoubleEquals;
 			NextCharPtr++;
 		} else {
-			/* Equals (assignment)  */
-			tok.Type = GarterToken::Equals;
+			// Equals (assignment)
+			tok.Type = Token::Equals;
 		}
 		break;
 
 	case '+':
-		tok.Type = GarterToken::Plus;
+		tok.Type = Token::Plus;
 		NextCharPtr++;
 		break;
 
 	case '-':
-		tok.Type = GarterToken::Minus;
+		tok.Type = Token::Minus;
 		NextCharPtr++;
 		break;
 
 	case '*':
 		NextCharPtr++;
 		if (*NextCharPtr == '*') {
-			tok.Type = GarterToken::DoubleAsterisk;
+			tok.Type = Token::DoubleAsterisk;
 			NextCharPtr++;
 		} else {
-			tok.Type = GarterToken::Asterisk;
+			tok.Type = Token::Asterisk;
 		}
 		break;
 
 	case '/':
-		tok.Type = GarterToken::ForwardSlash;
+		tok.Type = Token::ForwardSlash;
 		NextCharPtr++;
 		break;
 
 	case '%':
-		tok.Type = GarterToken::Percent;
+		tok.Type = Token::Percent;
 		NextCharPtr++;
 		break;
 
 	case '<':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			tok.Type = GarterToken::LessThanOrEqualTo;
+			tok.Type = Token::LessThanOrEqualTo;
 			NextCharPtr++;
 		} else {
-			tok.Type = GarterToken::LessThan;
+			tok.Type = Token::LessThan;
 		}
 		break;
 
 	case '>':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			tok.Type = GarterToken::GreaterThanOrEqualTo;
+			tok.Type = Token::GreaterThanOrEqualTo;
 			NextCharPtr++;
 		} else {
-			tok.Type = GarterToken::GreaterThan;
+			tok.Type = Token::GreaterThan;
 		}
 		break;
 
 	case '!':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			/* "Not equal to" symbol  */
-			tok.Type = GarterToken::NotEqualTo;
+			// "Not equal to" symbol
+			tok.Type = Token::NotEqualTo;
 			NextCharPtr++;
 		} else {
-			/* '!' followed by something else--- not valid  */
-			tok.Type = GarterToken::Error;
+			// '!' followed by something else--- not valid
+			tok.Type = Token::Error;
 			fprintf(stderr, "%s: Unexpected character '%c' "
 				"after '!' on line %lu\n",
 				Tag, *NextCharPtr, CurrentLineNumber);
@@ -228,11 +230,11 @@ next_char:
 		break;
 
 	case '\0':
-		/* '\0' should mark end of buffer  */
+		// '\0' should mark end of buffer
 		if (NextCharPtr == Buffer->getBufferEnd()) {
-			tok.Type = GarterToken::EndOfFile;
+			tok.Type = Token::EndOfFile;
 		} else {
-			tok.Type = GarterToken::Error;
+			tok.Type = Token::Error;
 			fprintf(stderr, "%s: Unexpected embedded null "
 				"character on line %lu\n",
 				Tag, CurrentLineNumber);
@@ -240,7 +242,7 @@ next_char:
 		break;
 
 	default:
-		tok.Type = GarterToken::Error;
+		tok.Type = Token::Error;
 		fprintf(stderr, "%s: Unexpected character '%c' on line %lu\n",
 			Tag, *NextCharPtr, CurrentLineNumber);
 		break;
