@@ -167,32 +167,32 @@ static void do_test(const LexerTestCase &testcase)
 
 		const LexerTestCase::ExpectedToken &tok =
 				testcase.ExpectedOutput[j];
-		Token actual_tok = lexer.getNextToken();
+		std::unique_ptr<Token> actual_tok = lexer.getNextToken();
 
-		if (tok.Type != actual_tok.getType()) {
+		if (tok.Type != actual_tok->getType()) {
 			fprintf(stderr, "Input \"%s\": token type mismatch "
 				"@ pos %zu\n", testcase.Input, j);
 			exit(1);
 		}
 
 		if (tok.Type == Token::Number &&
-		    tok.Number != actual_tok.getNumber())
+		    tok.Number != actual_tok->getNumber())
 		{
 			fprintf(stderr, "Input \"%s\": numeric value mismatch "
 				"@ pos %zu (expected %d, got %d)\n",
 				testcase.Input, j,
-				tok.Number, actual_tok.getNumber());
+				tok.Number, actual_tok->getNumber());
 			exit(1);
 		}
 
 		if (tok.Type == Token::Identifier &&
-		    (tok.Name == NULL || actual_tok.getName() == NULL ||
-		     strcmp(tok.Name, actual_tok.getName().get())))
+		    (tok.Name == NULL || actual_tok->getName() == NULL ||
+		     strcmp(tok.Name, actual_tok->getName())))
 		{
 			fprintf(stderr, "Input \"%s\": identifier name "
 				"mismatch @ pos %zu (expected %s, got %s)\n",
 				testcase.Input, j,
-				tok.Name, actual_tok.getName().get());
+				tok.Name, actual_tok->getName());
 			exit(1);
 		}
 
