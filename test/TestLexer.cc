@@ -6,13 +6,17 @@ using namespace garter;
 
 static const struct LexerTestCase {
 	const char *Input;
-	Token ExpectedOutput[9];
+	struct ExpectedToken {
+		Token::TokenType Type;
+		const char *Name;
+		int32_t Number;
+	} ExpectedOutput[9];
 } testcases[] = {
 	{
 		.Input = "",
 		.ExpectedOutput =
 		{
-			Token(Token::EndOfFile),
+			{.Type = Token::EndOfFile},
 		},
 
 	},
@@ -20,130 +24,130 @@ static const struct LexerTestCase {
 		.Input = "(",
 		.ExpectedOutput =
 		{
-			Token(Token::LeftParenthesis),
-			Token(Token::EndOfFile),
+			{.Type = Token::LeftParenthesis},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "():;,[]",
 		.ExpectedOutput =
 		{
-			Token(Token::LeftParenthesis),
-			Token(Token::RightParenthesis),
-			Token(Token::Colon),
-			Token(Token::Semicolon),
-			Token(Token::Comma),
-			Token(Token::LeftSquareBracket),
-			Token(Token::RightSquareBracket),
-			Token(Token::EndOfFile),
+			{.Type = Token::LeftParenthesis},
+			{.Type = Token::RightParenthesis},
+			{.Type = Token::Colon},
+			{.Type = Token::Semicolon},
+			{.Type = Token::Comma},
+			{.Type = Token::LeftSquareBracket},
+			{.Type = Token::RightSquareBracket},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "0",
 		.ExpectedOutput =
 		{
-			Token(Token::Number, 0),
-			Token(Token::EndOfFile),
+			{.Type = Token::Number, .Number = 0},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "0000000000003",
 		.ExpectedOutput =
 		{
-			Token(Token::Number, 3),
-			Token(Token::EndOfFile),
+			{.Type = Token::Number, .Number = 3},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "138",
 		.ExpectedOutput =
 		{
-			Token(Token::Number, 138),
-			Token(Token::EndOfFile),
+			{.Type = Token::Number, .Number = 138},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "2147483647",
 		.ExpectedOutput =
 		{
-			Token(Token::Number, 2147483647),
-			Token(Token::EndOfFile),
+			{.Type = Token::Number, .Number = 2147483647},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "2147483648",
 		.ExpectedOutput =
 		{
-			Token(Token::Error),
+			{.Type = Token::Error},
 		},
 	},
 	{
 		.Input = "a",
 		.ExpectedOutput =
 		{
-			Token(Token::Identifier, "a"),
-			Token(Token::EndOfFile),
+			{.Type = Token::Identifier, .Name = "a"},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "_azAZ09",
 		.ExpectedOutput =
 		{
-			Token(Token::Identifier, "_azAZ09"),
-			Token(Token::EndOfFile),
+			{.Type = Token::Identifier, .Name = "_azAZ09"},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "if if0 for while",
 		.ExpectedOutput =
 		{
-			Token(Token::If),
-			Token(Token::Identifier, "if0"),
-			Token(Token::For),
-			Token(Token::While),
-			Token(Token::EndOfFile),
+			{.Type = Token::If},
+			{.Type = Token::Identifier, .Name = "if0"},
+			{.Type = Token::For},
+			{.Type = Token::While},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "-10**2 + 3/b",
 		.ExpectedOutput =
 		{
-			Token(Token::Minus),
-			Token(Token::Number, 10),
-			Token(Token::DoubleAsterisk),
-			Token(Token::Number, 2),
-			Token(Token::Plus),
-			Token(Token::Number, 3),
-			Token(Token::ForwardSlash),
-			Token(Token::Identifier, "b"),
-			Token(Token::EndOfFile),
+			{.Type = Token::Minus},
+			{.Type = Token::Number, .Number = 10},
+			{.Type = Token::DoubleAsterisk},
+			{.Type = Token::Number, .Number = 2},
+			{.Type = Token::Plus},
+			{.Type = Token::Number, .Number = 3},
+			{.Type = Token::ForwardSlash},
+			{.Type = Token::Identifier, .Name = "b"},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "< > <= >= == !=",
 		.ExpectedOutput =
 		{
-			Token(Token::LessThan),
-			Token(Token::GreaterThan),
-			Token(Token::LessThanOrEqualTo),
-			Token(Token::GreaterThanOrEqualTo),
-			Token(Token::DoubleEquals),
-			Token(Token::NotEqualTo),
-			Token(Token::EndOfFile),
+			{.Type = Token::LessThan},
+			{.Type = Token::GreaterThan},
+			{.Type = Token::LessThanOrEqualTo},
+			{.Type = Token::GreaterThanOrEqualTo},
+			{.Type = Token::DoubleEquals},
+			{.Type = Token::NotEqualTo},
+			{.Type = Token::EndOfFile},
 		},
 	},
 	{
 		.Input = "!",
 		.ExpectedOutput =
 		{
-			Token(Token::Error),
+			{.Type = Token::Error},
 		},
 	},
 	{
 		.Input = "\xff",
 		.ExpectedOutput =
 		{
-			Token(Token::Error),
+			{.Type = Token::Error},
 		},
 	},
 };
@@ -152,42 +156,43 @@ static const struct LexerTestCase {
 
 static void do_test(const LexerTestCase &testcase)
 {
-	llvm::OwningPtr<llvm::MemoryBuffer> buffer(
-			llvm::MemoryBuffer::getMemBuffer(testcase.Input));
+	std::shared_ptr<llvm::MemoryBuffer>
+		buffer(llvm::MemoryBuffer::getMemBuffer(testcase.Input));
 
-	Lexer lexer(buffer.get());
+	Lexer lexer(buffer);
 
 	printf("Test string %s\n", testcase.Input);
 
 	for (size_t j = 0; j < ARRAY_LEN(testcase.ExpectedOutput); j++) {
 
-		const Token &tok = testcase.ExpectedOutput[j];
+		const LexerTestCase::ExpectedToken &tok =
+				testcase.ExpectedOutput[j];
 		Token actual_tok = lexer.getNextToken();
 
-		if (tok.Type != actual_tok.Type) {
+		if (tok.Type != actual_tok.getType()) {
 			fprintf(stderr, "Input \"%s\": token type mismatch "
 				"@ pos %zu\n", testcase.Input, j);
 			exit(1);
 		}
 
 		if (tok.Type == Token::Number &&
-		    tok.Value.Number != actual_tok.Value.Number)
+		    tok.Number != actual_tok.getNumber())
 		{
 			fprintf(stderr, "Input \"%s\": numeric value mismatch "
 				"@ pos %zu (expected %d, got %d)\n",
 				testcase.Input, j,
-				tok.Value.Number, actual_tok.Value.Number);
+				tok.Number, actual_tok.getNumber());
 			exit(1);
 		}
 
 		if (tok.Type == Token::Identifier &&
-		    (tok.Value.Name == NULL || actual_tok.Value.Name == NULL ||
-		     strcmp(tok.Value.Name, actual_tok.Value.Name)))
+		    (tok.Name == NULL || actual_tok.getName() == NULL ||
+		     strcmp(tok.Name, actual_tok.getName().get())))
 		{
 			fprintf(stderr, "Input \"%s\": identifier name "
 				"mismatch @ pos %zu (expected %s, got %s)\n",
 				testcase.Input, j,
-				tok.Value.Name, actual_tok.Value.Name);
+				tok.Name, actual_tok.getName().get());
 			exit(1);
 		}
 

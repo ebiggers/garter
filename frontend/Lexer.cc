@@ -20,15 +20,12 @@ static const uint8_t CharTab[256] = {
 	['0' ... '9'] = NUMBER,
 };
 
-Token Lexer::lexIdentifierOrKeyword()
+std::unique_ptr<Token> Lexer::lexIdentifierOrKeyword()
 {
-	Token tok;
 	const char *start;
 	size_t len;
-	char *name;
 
 	start = NextCharPtr;
-	tok.Type = Token::Identifier;
 
 	do {
 		NextCharPtr++;
@@ -36,24 +33,22 @@ Token Lexer::lexIdentifierOrKeyword()
 						   UNDERSCORE | NUMBER));
 	len = NextCharPtr - start;
 
-	name = new char[len + 1];
+	char *name = new char[len + 1];
 	memcpy(name, start, len);
 	name[len] = '\0';
 
-	auto it = Keywords.find(name);
-	if (it == Keywords.end()) {
-		tok.Value.Name = name;
-	} else {
-		tok = it->second;
-		delete name;
-	}
+	auto it_kw = Keywords.find(name);
 
-	return tok;
+	if (it_kw != Keywords.end()) {
+		delete name;
+		return std::unique_ptr<Token>(new Token(it_kw->second));
+	} else {
+		return std::unique_ptr<Token>(new Token(Token::Identifier, name));
+	}
 }
 
-Token Lexer::lexNumber()
+std::unique_ptr<Token> Lexer::lexNumber()
 {
-	Token tok(Token::Number);
 	int32_t n = 0;
 
 	do {
@@ -73,21 +68,16 @@ Token Lexer::lexNumber()
 
 	} while (*NextCharPtr >= '0' && *NextCharPtr <= '9');
 
-	tok.Value.Number = n;
-
-	return tok;
+	return std::unique_ptr<Token>(new Token(Token::Number, n));
 
 too_large:
 	fprintf(stderr, "%s: Integer constant on line %lu is "
 		"too large!\n", Tag, CurrentLineNumber);
-	tok.Type = Token::Error;
-	return tok;
+	return std::unique_ptr<Token>(new Token(Token::Error));
 }
 
-Token Lexer::getNextToken()
+std::unique_ptr<Token> Lexer::getNextToken()
 {
-	Token tok;
-
 next_char:
 	switch (*NextCharPtr) {
 	case '\n':
@@ -110,142 +100,123 @@ next_char:
 	case 'a' ... 'z':
 	case 'A' ... 'Z':
 	case '_':
-		tok = lexIdentifierOrKeyword();
-		break;
+		return lexIdentifierOrKeyword();
 
 	case '0' ... '9':
-		tok = lexNumber();
-		break;
+		return lexNumber();
 
 	case '(':
-		tok.Type = Token::LeftParenthesis;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::LeftParenthesis));
 
 	case ')':
-		tok.Type = Token::RightParenthesis;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::RightParenthesis));
 
 	case ':':
-		tok.Type = Token::Colon;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Colon));
 
 	case ';':
-		tok.Type = Token::Semicolon;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Semicolon));
 
 	case ',':
-		tok.Type = Token::Comma;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Comma));
 
 	case '[':
-		tok.Type = Token::LeftSquareBracket;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::LeftSquareBracket));
 
 	case ']':
-		tok.Type = Token::RightSquareBracket;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::RightSquareBracket));
 
 	case '=':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
 			// Double equals (equality predicate)
-			tok.Type = Token::DoubleEquals;
 			NextCharPtr++;
+			return std::unique_ptr<Token>(new Token(Token::DoubleEquals));
 		} else {
 			// Equals (assignment)
-			tok.Type = Token::Equals;
+			return std::unique_ptr<Token>(new Token(Token::Equals));
 		}
 		break;
 
 	case '+':
-		tok.Type = Token::Plus;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Plus));
 
 	case '-':
-		tok.Type = Token::Minus;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Minus));
 
 	case '*':
 		NextCharPtr++;
 		if (*NextCharPtr == '*') {
-			tok.Type = Token::DoubleAsterisk;
 			NextCharPtr++;
+			return std::unique_ptr<Token>(new Token(Token::DoubleAsterisk));
 		} else {
-			tok.Type = Token::Asterisk;
+			return std::unique_ptr<Token>(new Token(Token::Asterisk));
 		}
 		break;
 
 	case '/':
-		tok.Type = Token::ForwardSlash;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::ForwardSlash));
 
 	case '%':
-		tok.Type = Token::Percent;
 		NextCharPtr++;
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Percent));
 
 	case '<':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			tok.Type = Token::LessThanOrEqualTo;
 			NextCharPtr++;
+			return std::unique_ptr<Token>(new Token(Token::LessThanOrEqualTo));
 		} else {
-			tok.Type = Token::LessThan;
+			return std::unique_ptr<Token>(new Token(Token::LessThan));
 		}
-		break;
 
 	case '>':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
-			tok.Type = Token::GreaterThanOrEqualTo;
 			NextCharPtr++;
+			return std::unique_ptr<Token>(new Token(Token::GreaterThanOrEqualTo));
 		} else {
-			tok.Type = Token::GreaterThan;
+			return std::unique_ptr<Token>(new Token(Token::GreaterThan));
 		}
-		break;
 
 	case '!':
 		NextCharPtr++;
 		if (*NextCharPtr == '=') {
 			// "Not equal to" symbol
-			tok.Type = Token::NotEqualTo;
 			NextCharPtr++;
+			return std::unique_ptr<Token>(new Token(Token::NotEqualTo));
 		} else {
 			// '!' followed by something else--- not valid
-			tok.Type = Token::Error;
 			fprintf(stderr, "%s: Unexpected character '%c' "
 				"after '!' on line %lu\n",
 				Tag, *NextCharPtr, CurrentLineNumber);
+			return std::unique_ptr<Token>(new Token(Token::Error));
 		}
-		break;
 
 	case '\0':
 		// '\0' should mark end of buffer
 		if (NextCharPtr == Buffer->getBufferEnd()) {
-			tok.Type = Token::EndOfFile;
+			return std::unique_ptr<Token>(new Token(Token::EndOfFile));
 		} else {
-			tok.Type = Token::Error;
 			fprintf(stderr, "%s: Unexpected embedded null "
 				"character on line %lu\n",
 				Tag, CurrentLineNumber);
+			return std::unique_ptr<Token>(new Token(Token::Error));
 		}
-		break;
 
 	default:
-		tok.Type = Token::Error;
 		fprintf(stderr, "%s: Unexpected character '%c' on line %lu\n",
 			Tag, *NextCharPtr, CurrentLineNumber);
-		break;
+		return std::unique_ptr<Token>(new Token(Token::Error));
 	}
-	return tok;
 }

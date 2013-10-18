@@ -1,10 +1,11 @@
 #include <inttypes.h>
 #include <limits.h>
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
 #include <stdio.h>
 #include <map>
+#include <set>
+#include <memory>
 
 namespace garter {
 
@@ -52,78 +53,88 @@ public:
 		RightSquareBracket,
 		Semicolon,
 		While,
-	} Type;
+	};
 
-	union {
-		int32_t Number;
-		const char *Name;
-	} Value;
-
-	explicit Token(enum TokenType type) {
-		Type = type;
-		Value.Name = NULL;
+	TokenType getType() const {
+		return Type;
 	}
 
-	explicit Token(enum TokenType type, const char *name) {
-		Type = type;
-		Value.Name = name;
-	}
+	const char * getName() const {
+		assert(Type == Identifier);
+		return Name;
+	};
 
-	explicit Token(enum TokenType type, int32_t number) {
-		Type = type;
-		Value.Number = number;
-	}
-
-	explicit Token() {
-		Type = Token::Error;
-		Value.Name = NULL;
-	}
+	int32_t getNumber() const {
+		assert(Type == Number);
+		return _Number;
+	};
 
 	~Token() {
+		if (Type == TokenType::Identifier) {
+			delete Name;
+		}
 	}
+
+private:
+
+	friend class Lexer;
+
+	TokenType Type;
+	char *Name;
+	int32_t _Number;
+
+
+	explicit Token(enum TokenType type)
+		: Type(type) { }
+
+	explicit Token(enum TokenType type, char *name)
+		: Type(type), Name(name) { }
+
+	explicit Token(enum TokenType type, int32_t number) 
+		: Type(type), _Number(number) { }
 };
 
 class Lexer {
 private:
-	llvm::MemoryBuffer *Buffer;
+	std::shared_ptr<llvm::MemoryBuffer> Buffer;
 	unsigned long CurrentLineNumber;
 	const char *NextCharPtr;
-	std::map<std::string, Token> Keywords;
+	std::map<std::string, Token::TokenType> Keywords;
 
 	static const char * const Tag;
 
-	Token lexNumber();
-	Token lexIdentifierOrKeyword();
+	std::unique_ptr<Token> lexNumber();
+	std::unique_ptr<Token> lexIdentifierOrKeyword();
 
 public:
-	explicit Lexer(llvm::MemoryBuffer *buffer)
+	explicit Lexer(std::shared_ptr<llvm::MemoryBuffer> buffer)
 		: Buffer(buffer),
 		  CurrentLineNumber(1)
 	{
 		NextCharPtr = buffer->getBufferStart();
-		Keywords["and"] = Token(Token::And);
-		Keywords["def"] = Token(Token::Def);
-		Keywords["else"] = Token(Token::Else);
-		Keywords["elif"] = Token(Token::Elif);
-		Keywords["enddef"] = Token(Token::EndDef);
-		Keywords["endfor"] = Token(Token::EndFor);
-		Keywords["endif"] = Token(Token::EndIf);
-		Keywords["endwhile"] = Token(Token::EndWhile);
-		Keywords["for"] = Token(Token::For);
-		Keywords["if"] = Token(Token::If);
-		Keywords["in"] = Token(Token::In);
-		Keywords["not"] = Token(Token::Not);
-		Keywords["or"] = Token(Token::Or);
-		Keywords["pass"] = Token(Token::Pass);
-		Keywords["print"] = Token(Token::Print);
-		Keywords["return"] = Token(Token::Return);
-		Keywords["while"] = Token(Token::While);
+		Keywords.insert(std::make_pair("and", Token::And));
+		Keywords.insert(std::make_pair("def", Token::Def));
+		Keywords.insert(std::make_pair("else", Token::Else));
+		Keywords.insert(std::make_pair("elif", Token::Elif));
+		Keywords.insert(std::make_pair("enddef", Token::EndDef));
+		Keywords.insert(std::make_pair("endfor", Token::EndFor));
+		Keywords.insert(std::make_pair("endif", Token::EndIf));
+		Keywords.insert(std::make_pair("endwhile", Token::EndWhile));
+		Keywords.insert(std::make_pair("for", Token::For));
+		Keywords.insert(std::make_pair("if", Token::If));
+		Keywords.insert(std::make_pair("in", Token::In));
+		Keywords.insert(std::make_pair("not", Token::Not));
+		Keywords.insert(std::make_pair("or", Token::Or));
+		Keywords.insert(std::make_pair("pass", Token::Pass));
+		Keywords.insert(std::make_pair("print", Token::Print));
+		Keywords.insert(std::make_pair("return", Token::Return));
+		Keywords.insert(std::make_pair("while", Token::While));
 	}
 
 	~Lexer() {
 	}
 
-	Token getNextToken();
+	std::unique_ptr<Token> getNextToken();
 };
 
 } // End garter namespace
