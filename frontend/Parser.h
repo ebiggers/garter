@@ -192,24 +192,35 @@ private:
 	Lexer Lexer;
 	static const char * const Tag;
 	std::unique_ptr<Token> CurrentToken;
+	std::unique_ptr<Token> NextToken;
 
 	std::unique_ptr<ExpressionAST>          parseNumberExpression();
 	std::unique_ptr<ExpressionAST>          parseParenthesizedExpression();
 	std::unique_ptr<ExpressionAST>          parseExpression();
+	std::unique_ptr<ExpressionStatementAST> parseExpressionStatement();
 	std::unique_ptr<FunctionDefinitionAST>  parseFunctionDefinition();
+	std::unique_ptr<AssignmentStatementAST> parseAssignmentStatement();
 	std::unique_ptr<IfStatementAST>         parseIfStatement();
 	std::unique_ptr<PassStatementAST>       parsePassStatement();
 	std::unique_ptr<PrintStatementAST>      parsePrintStatement();
 	std::unique_ptr<ReturnStatementAST>     parseReturnStatement();
 	std::unique_ptr<WhileStatementAST>      parseWhileStatement();
-	std::unique_ptr<ExpressionStatementAST> parseExpressionStatement();
 	std::unique_ptr<StatementAST>           parseStatement();
 
 	void parseError(const char *format, ...);
 
 	void nextToken()
 	{
-		CurrentToken = Lexer.getNextToken();
+		if (NextToken)
+			CurrentToken = std::move(NextToken);
+		else
+			CurrentToken = Lexer.getNextToken();
+	}
+
+	void nextTokenLookahead()
+	{
+		if (NextToken == nullptr)
+			NextToken = Lexer.getNextToken();
 	}
 public:
 	explicit Parser(std::shared_ptr<llvm::MemoryBuffer> buffer) :

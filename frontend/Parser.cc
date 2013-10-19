@@ -52,11 +52,34 @@ Parser::parseParenthesizedExpression()
 	return expression;
 }
 
+/*
+ * <expr> ::=
+ *	<paren_expr>
+ *	| <expr> ** <expr>
+ *	| <expr> *  <expr>
+ *	| <expr> /  <expr>
+ *	| <expr> %  <expr>
+ *	| <expr> +  <expr>
+ *	| <expr> -  <expr>
+ *	| <expr> <  <expr>
+ *	| <expr> <= <expr>
+ *	| <expr> >  <expr>
+ *	| <expr> >= <expr>
+ *	| <expr> == <expr>
+ *	| <expr> != <expr>
+ *	| <expr> and <expr>
+ *	| <expr> or <expr>
+ */
 std::unique_ptr<ExpressionAST>
 Parser::parseExpression()
 {
-	/* TODO */
-	return nullptr;
+	switch (CurrentToken->getType()) {
+	case Token::EndOfFile:
+		parseError("Unexpected end of file!");
+		break;
+	case Token::Number:
+		return parseNumberExpression();
+	}
 }
 
 /* <funcdef> ::=
@@ -125,6 +148,58 @@ Parser::parseFunctionDefinition()
 
 	return std::unique_ptr<FunctionDefinitionAST>(
 			new FunctionDefinitionAST(name, parameters, statements));
+}
+
+
+/* <assignment_stmt> ::=
+ *	<identifier> = <expr> ;
+ */
+std::unique_ptr<AssignmentStatementAST>
+Parser::parseAssignmentStatement()
+{
+	assert(CurrentToken->getType() == Token::Identifier);
+	std::unique_ptr<VariableExpressionAST> lhs(
+			new VariableExpressionAST(CurrentToken->getName()));
+	nextToken();
+
+	assert(CurrentToken->getType() == Token::Equals);
+	nextToken();
+
+	std::unique_ptr<ExpressionAST> rhs = parseExpression();
+	if (rhs == nullptr)
+		return nullptr;
+
+	if (CurrentToken->getType() != Token::Semicolon) {
+		parseError("Expected ';'\n");
+		return nullptr;
+	}
+	nextToken();
+
+	return std::unique_ptr<AssignmentStatementAST>(
+			new AssignmentStatementAST(std::move(lhs),
+						   std::move(rhs)));
+}
+
+/* <expr_stmt> ::=
+ *	<expr> ;
+ */
+std::unique_ptr<ExpressionStatementAST>
+Parser::parseExpressionStatement()
+{
+	std::unique_ptr<ExpressionAST> expression = parseExpression();
+
+	if (expression == nullptr)
+		return nullptr;
+
+	if (CurrentToken->getType() != Token::Semicolon) {
+		parseError("Expected ';'\n");
+		return nullptr;
+	}
+
+	nextToken();
+
+	return std::unique_ptr<ExpressionStatementAST>(
+			new ExpressionStatementAST(std::move(expression)));
 }
 
 /* <if_stmt> ::=
@@ -337,40 +412,25 @@ Parser::parseWhileStatement()
 				new WhileStatementAST(std::move(condition), body));
 }
 
-/* <expr_stmt> ::=
- *	<expr> ;
- */
-std::unique_ptr<ExpressionStatementAST>
-Parser::parseExpressionStatement()
-{
-	std::unique_ptr<ExpressionAST> expression = parseExpression();
-
-	if (expression == nullptr)
-		return nullptr;
-
-	if (CurrentToken->getType() != Token::Semicolon) {
-		parseError("Expected ';'\n");
-		return nullptr;
-	}
-
-	nextToken();
-
-	return std::unique_ptr<ExpressionStatementAST>(
-			new ExpressionStatementAST(std::move(expression)));
-}
-
 /* <stmt> ::=
- *	<if_stmt>
+ *	<assignment_stmt>
+ *	| <expr_stmt>
+ *	| <if_stmt>
  *	| <pass_stmt>
  *	| <print_stmt>
  *	| <return_stmt>
  *	| <while_stmt>
- *	| <expr_stmt>
  */
 std::unique_ptr<StatementAST>
 Parser::parseStatement()
 {
 	switch (CurrentToken->getType()) {
+	case Token::Identifier:
+		nextTokenLookahead();
+		if (NextToken->getType() == Token::Equals)
+			return parseAssignmentStatement();
+		else
+			return parseExpressionStatement();
 	case Token::If:
 		return parseIfStatement();
 	case Token::Pass:
