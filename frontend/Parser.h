@@ -1,5 +1,6 @@
 #include <frontend/Lexer.h>
 #include <memory>
+#include <vector>
 
 namespace garter {
 
@@ -80,7 +81,7 @@ private:
 	std::vector<std::shared_ptr<StatementAST>> ElseStatements;
 
 public:
-	IfStatementAST(ExpressionAST *condition,
+	IfStatementAST(std::shared_ptr<ExpressionAST> condition,
 		       const std::vector<std::shared_ptr<StatementAST>> & statements,
 		       const std::vector<std::shared_ptr<ElifClause>> & elif_clauses,
 		       const std::vector<std::shared_ptr<StatementAST>> & else_statements)

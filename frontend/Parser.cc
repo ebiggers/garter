@@ -16,28 +16,26 @@ void Parser::parseError(const char *format, ...)
 	va_end(va);
 }
 
+/* <num_expr> ::=
+ *	number
+ */
 std::unique_ptr<ExpressionAST>
 Parser::parseNumberExpression()
 {
 	assert(CurrentToken->getType() == Token::Number);
-	std::unique_ptr<ExpressionAST> ast(
+	std::unique_ptr<ExpressionAST> num_expr(
 			new NumberExpressionAST(CurrentToken->getNumber()));
 	nextToken();
-	return ast;
+	return num_expr;
 }
 
-std::unique_ptr<ExpressionAST>
-Parser::parseExpression()
-{
-	/* TODO */
-	return nullptr;
-}
-
+/* <paren_expr> ::=
+ *	( <expr> )
+ */
 std::unique_ptr<ExpressionAST>
 Parser::parseParenthesizedExpression()
 {
 	assert(CurrentToken->getType() == Token::LeftParenthesis);
-
 	nextToken();
 
 	std::unique_ptr<ExpressionAST> expression = parseExpression();
@@ -49,42 +47,188 @@ Parser::parseParenthesizedExpression()
 		parseError("Expected ')'\n");
 		return nullptr;
 	}
-
 	nextToken();
 
 	return expression;
 }
 
+std::unique_ptr<ExpressionAST>
+Parser::parseExpression()
+{
+	/* TODO */
+	return nullptr;
+}
 
+/* <funcdef> ::=
+ *	def <identifier> \( (identifier (, identifier)*)? \) : <stmt>+  enddef
+ */
 std::unique_ptr<FunctionDefinitionAST>
 Parser::parseFunctionDefinition()
 {
-	assert(CurrentToken->getType() == Token::Def);
+	std::string name;
+	std::vector<std::string> parameters;
+	std::vector<std::shared_ptr<StatementAST>> statements;
 
+	assert(CurrentToken->getType() == Token::Def);
 	nextToken();
 
-	/* TODO */
+	if (CurrentToken->getType() != Token::Identifier) {
+		parseError("Expected identifier (function name) after 'def'\n");
+		return nullptr;
+	}
+	name = CurrentToken->getName();
+	nextToken();
 
-	return nullptr;
+	if (CurrentToken->getType() != Token::LeftParenthesis) {
+		parseError("Expected '('\n");
+		return nullptr;
+	}
+	nextToken();
+
+	if (CurrentToken->getType() != Token::RightParenthesis) {
+		for (;;) {
+			if (CurrentToken->getType() != Token::Identifier) {
+				parseError("Expected identifier (named parameter) "
+					   "in function prototype\n");
+				return nullptr;
+			}
+
+			parameters.push_back(std::string(CurrentToken->getName()));
+			nextToken();
+
+			if (CurrentToken->getType() == Token::Comma) {
+				nextToken();
+			} else if (CurrentToken->getType() == Token::RightParenthesis) {
+				break;
+			} else {
+				parseError("Expected ',' or ')' in function prototype\n");
+				return nullptr;
+			}
+		}
+	}
+	nextToken();
+
+	if (CurrentToken->getType() != Token::Colon) {
+		parseError("Expected ':'\n");
+		return nullptr;
+	}
+	nextToken();
+
+	do {
+		std::unique_ptr<StatementAST> statement = parseStatement();
+
+		if (statement == nullptr)
+			return nullptr;
+		statements.push_back(std::move(statement));
+	} while (CurrentToken->getType() != Token::EndDef);
+	nextToken();
+
+	return std::unique_ptr<FunctionDefinitionAST>(
+			new FunctionDefinitionAST(name, parameters, statements));
 }
 
+/* <if_stmt> ::=
+ *	if <expr> : <stmt>+ (elif <expr>: <stmt>+)* (else: <stmt>+)? endif
+ */
 std::unique_ptr<IfStatementAST>
 Parser::parseIfStatement()
 {
-	assert(CurrentToken->getType() == Token::If);
+	std::unique_ptr<ExpressionAST> condition;
+	std::vector<std::shared_ptr<StatementAST>> statements;
+	std::vector<std::shared_ptr<IfStatementAST::ElifClause>> elif_clauses;
+	std::vector<std::shared_ptr<StatementAST>> else_statements;
 
+	assert(CurrentToken->getType() == Token::If);
 	nextToken();
 
-	return nullptr;
+	condition = parseExpression();
+	if (condition == nullptr)
+		return nullptr;
+
+	if (CurrentToken->getType() != Token::Colon) {
+		parseError("Expected ':'\n");
+		return nullptr;
+	}
+	nextToken();
+
+	do {
+		std::unique_ptr<StatementAST> statement = parseStatement();
+
+		if (statement == nullptr)
+			return nullptr;
+		statements.push_back(std::move(statement));
+	} while (CurrentToken->getType() != Token::EndIf &&
+		 CurrentToken->getType() != Token::Else &&
+		 CurrentToken->getType() != Token::Elif);
+
+	while (CurrentToken->getType() == Token::Elif)
+	{
+		std::unique_ptr<ExpressionAST> elif_condition;
+		std::vector<std::shared_ptr<StatementAST>> elif_statements;
+
+		nextToken();
+
+		elif_condition = parseExpression();
+		if (elif_condition == nullptr)
+			return nullptr;
+
+		if (CurrentToken->getType() != Token::Colon) {
+			parseError("Expected ':'\n");
+			return nullptr;
+		}
+
+		nextToken();
+
+		do {
+			std::unique_ptr<StatementAST> statement = parseStatement();
+
+			if (statement == nullptr)
+				return nullptr;
+			elif_statements.push_back(std::move(statement));
+		} while (CurrentToken->getType() != Token::EndIf &&
+			 CurrentToken->getType() != Token::Else &&
+			 CurrentToken->getType() != Token::Elif);
+		elif_clauses.push_back(
+			std::shared_ptr<IfStatementAST::ElifClause>(
+				new IfStatementAST::ElifClause(
+					std::move(elif_condition),
+						elif_statements)));
+	}
+
+	if (CurrentToken->getType() == Token::Else) {
+
+		nextToken();
+
+		if (CurrentToken->getType() != Token::Colon) {
+			parseError("Expected ':'\n");
+			return nullptr;
+		}
+
+		nextToken();
+
+		do {
+			std::unique_ptr<StatementAST> statement = parseStatement();
+			if (statement == nullptr)
+				return nullptr;
+			else_statements.push_back(std::move(statement));
+		} while (CurrentToken->getType() != Token::EndIf);
+	}
+
+	return std::unique_ptr<IfStatementAST>(
+			new IfStatementAST(std::move(condition), statements,
+					   elif_clauses, else_statements));
 }
 
+/* <pass_stmt> ::=
+ *	pass ;
+ */
 std::unique_ptr<PassStatementAST>
 Parser::parsePassStatement()
 {
 	assert(CurrentToken->getType() == Token::Pass);
 
 	nextToken();
-	
+
 	if (CurrentToken->getType() != Token::Semicolon) {
 		parseError("Expected ';'\n");
 		return nullptr;
@@ -95,23 +239,36 @@ Parser::parsePassStatement()
 	return std::unique_ptr<PassStatementAST>(new PassStatementAST());
 }
 
+/* <print_stmt> ::=
+ *	print (<expr> ,)* ;
+ */
 std::unique_ptr<PrintStatementAST>
 Parser::parsePrintStatement()
 {
+	std::vector<std::shared_ptr<ExpressionAST>> expressions;
+
 	assert(CurrentToken->getType() == Token::Print);
 
 	nextToken();
 
-	std::vector<std::shared_ptr<ExpressionAST>> expressions;
+	if (CurrentToken->getType() != Token::Semicolon) {
+		for (;;) {
+			std::unique_ptr<ExpressionAST> expression = parseExpression();
 
-	while (CurrentToken->getType() != Token::Semicolon)
-	{
-		std::unique_ptr<ExpressionAST> expression = parseExpression();
+			if (expression == nullptr)
+				return nullptr;
 
-		if (expression == nullptr)
-			return nullptr;
+			expressions.push_back(std::move(expression));
 
-		expressions.push_back(std::move(expression));
+			if (CurrentToken->getType() == Token::Comma) {
+				nextToken();
+			} else if (CurrentToken->getType() == Token::Semicolon) {
+				break;
+			} else {
+				parseError("Expected ';' or ','\n");
+				return nullptr;
+			}
+		}
 	}
 
 	nextToken();
@@ -120,6 +277,9 @@ Parser::parsePrintStatement()
 			new PrintStatementAST(expressions));
 }
 
+/* <return_stmt> ::=
+ *	return <expr> ;
+ */
 std::unique_ptr<ReturnStatementAST>
 Parser::parseReturnStatement()
 {
@@ -143,6 +303,9 @@ Parser::parseReturnStatement()
 				new ReturnStatementAST(std::move(expression)));
 }
 
+/* <while_stmt> ::=
+ *	while <expr> : <stmt>+ endwhile
+ */
 std::unique_ptr<WhileStatementAST>
 Parser::parseWhileStatement()
 {
@@ -157,15 +320,16 @@ Parser::parseWhileStatement()
 		return nullptr;
 	}
 
+	nextToken();
+
 	std::vector<std::shared_ptr<StatementAST>> body;
 
-	while (CurrentToken->getType() != Token::EndWhile)
-	{
+	do {
 		std::unique_ptr<StatementAST> statement = parseStatement();
 		if (statement == nullptr)
 			return nullptr;
 		body.push_back(std::move(statement));
-	}
+	} while (CurrentToken->getType() != Token::EndWhile);
 
 	nextToken();
 
@@ -173,6 +337,9 @@ Parser::parseWhileStatement()
 				new WhileStatementAST(std::move(condition), body));
 }
 
+/* <expr_stmt> ::=
+ *	<expr> ;
+ */
 std::unique_ptr<ExpressionStatementAST>
 Parser::parseExpressionStatement()
 {
@@ -181,15 +348,25 @@ Parser::parseExpressionStatement()
 	if (expression == nullptr)
 		return nullptr;
 
-	if (CurrentToken->getType() != Token::Semicolon)
-	{
+	if (CurrentToken->getType() != Token::Semicolon) {
 		parseError("Expected ';'\n");
 		return nullptr;
 	}
+
+	nextToken();
+
 	return std::unique_ptr<ExpressionStatementAST>(
 			new ExpressionStatementAST(std::move(expression)));
 }
 
+/* <stmt> ::=
+ *	<if_stmt>
+ *	| <pass_stmt>
+ *	| <print_stmt>
+ *	| <return_stmt>
+ *	| <while_stmt>
+ *	| <expr_stmt>
+ */
 std::unique_ptr<StatementAST>
 Parser::parseStatement()
 {
@@ -209,19 +386,25 @@ Parser::parseStatement()
 	}
 }
 
+/* <program> ::=
+ *	<toplevel_item>*
+ *
+ * <toplevel_item> ::=
+ *	<stmt>
+ *	| <funcdef>
+ */
 std::unique_ptr<AST>
 Parser::buildAST()
 {
 	std::vector<std::shared_ptr<AST>> top_level_items;
 
-	nextToken();
-	
-	for (;;) {
+	while (CurrentToken->getType() != Token::EndOfFile) {
+
 		std::unique_ptr<AST> ast;
+
 		switch (CurrentToken->getType()) {
-		case Token::EndOfFile:
-			break;
 		case Token::Error:
+			ast = nullptr;
 			break;
 		case Token::Def:
 			ast = parseFunctionDefinition();
@@ -230,7 +413,7 @@ Parser::buildAST()
 			ast = parseStatement();
 			break;
 		}
-		if (!ast)
+		if (ast == nullptr)
 			return nullptr;
 		top_level_items.push_back(std::move(ast));
 	}
