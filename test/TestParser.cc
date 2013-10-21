@@ -100,7 +100,7 @@ int main()
 	{
 		const std::string & path = dir->path();
 		const llvm::StringRef ext(llvm::sys::path::extension(path));
-		if (ext == ".garter")
+		if (ext == ".ga")
 			src_file_paths.push_back(path);
 		else if (ext == ".tree")
 			tree_file_paths.push_back(path);
