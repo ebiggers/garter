@@ -41,6 +41,7 @@ public:
 		LessThanOrEqualTo,
 		Minus,
 		Not,
+		NotIn,
 		NotEqualTo,
 		Number,
 		Or,

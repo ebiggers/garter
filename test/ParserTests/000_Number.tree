@@ -1,0 +1,7 @@
+Program {
+	TopLevelItems = [
+		ExpressionStatement {
+			Expression = 1
+		}
+	]
+}

@@ -36,7 +36,7 @@ $(OBJ): %.o : %.cc
 
 test:$(TEST_EXE)
 	for testprog in $(TEST_EXE); do		\
-		$$testprog;			\
+		$$testprog || exit $$?;		\
 	done
 
 $(TEST_EXE): %:%.o $(FRONTEND_OBJ)
