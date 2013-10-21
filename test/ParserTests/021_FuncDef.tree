@@ -1,0 +1,15 @@
+Program {
+	TopLevelItems = [
+		FunctionDefinition {
+			Name = "echo",
+			Parameters = ["a"],
+			Body = [
+				ReturnStatement {
+					Expression = VariableExpression {
+						Name = "a"
+					}
+				}
+			]
+		}
+	]
+}

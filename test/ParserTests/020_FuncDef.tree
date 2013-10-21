@@ -1,0 +1,15 @@
+Program {
+	TopLevelItems = [
+		FunctionDefinition {
+			Name = "onePlease",
+			Parameters = [],
+			Body = [
+				ReturnStatement {
+					Expression = NumberExpression {
+						Number = 1
+					}
+				}
+			]
+		}
+	]
+}

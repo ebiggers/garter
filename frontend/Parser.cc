@@ -87,10 +87,10 @@ void FunctionDefinitionAST::print(std::ostream & os) const
 	os << "Name = \"" << Name << "\",";
 	os << "Parameters = [";
 	for (const std::string & param  : Parameters)
-		os << param << ",";
+		os << '"' << param << '"' << ",";
 
-	os << "], Statements = [";
-	for (auto stmtptr : Statements)
+	os << "], Body = [";
+	for (auto stmtptr : Body)
 		os << *stmtptr << ",";
 	os << "]";
 	os << "}";
@@ -113,7 +113,7 @@ void AssignmentStatementAST::print(std::ostream & os) const
 
 void PassStatementAST::print(std::ostream & os) const
 {
-	os << "PassStatement { }";
+	os << "PassStatement";
 }
 
 void ReturnStatementAST::print(std::ostream & os) const
@@ -203,13 +203,15 @@ void UnaryExpressionAST::print(std::ostream & os) const
 
 void NumberExpressionAST::print(std::ostream & os) const
 {
-	os << Number;
+	os << "NumberExpression {";
+	os << "Number = " << Number;
+	os << "}";
 }
 
 void CallExpressionAST::print(std::ostream & os) const
 {
 	os << "CallExpression {";
-	os << "Callee = " << Callee << ",";
+	os << "Callee = \"" << Callee << "\",";
 	os << "Arguments = [";
 	for (auto argptr : Arguments)
 		os << *argptr << ",";
@@ -372,6 +374,11 @@ Parser::parsePrimaryExpression()
 		return parseNumberExpression();
 	case Token::LeftParenthesis:
 		return parseParenthesizedExpression();
+	case Token::EndOfFile:
+		parseError("Unexpected end of file\n");
+		return nullptr;
+	case Token::Error:
+		return nullptr;
 	default:
 		parseError("Expected start of primary expression\n");
 		return nullptr;

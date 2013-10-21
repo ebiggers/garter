@@ -1,0 +1,27 @@
+Program {
+	TopLevelItems = [
+		FunctionDefinition {
+			Name = "addMultiply",
+			Parameters = ["a", "b", "c"],
+			Body = [
+				ReturnStatement {
+					Expression = BinaryExpression {
+						Op = "Add",
+						LHS = VariableExpression {
+							Name = "a"
+						},
+						RHS = BinaryExpression {
+							Op = "Multiply",
+							LHS = VariableExpression {
+								Name = "b"
+							},
+							RHS = VariableExpression {
+								Name = "c"
+							}
+						}
+					}
+				}
+			]
+		}
+	]
+}

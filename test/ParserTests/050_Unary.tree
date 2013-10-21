@@ -1,0 +1,28 @@
+Program {
+	TopLevelItems = [
+		PrintStatement {
+			Arguments = [
+				BinaryExpression {
+					Op = "Add",
+					LHS = UnaryExpression {
+						Op = "Minus",
+						Expression = BinaryExpression {
+							Op = "Exponentiate",
+							LHS = NumberExpression {
+								Number = 1
+							},
+							RHS = NumberExpression {
+								Number = 2
+							}
+						}
+					}, RHS = UnaryExpression {
+						Op = "Minus",
+						Expression = NumberExpression {
+							Number = 5,
+						}
+					}
+				}
+			]
+		}
+	]
+}

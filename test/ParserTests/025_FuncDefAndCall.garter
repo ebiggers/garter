@@ -1,0 +1,4 @@
+def onePlease():
+	return 1;
+enddef
+print onePlease();

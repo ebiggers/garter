@@ -1,0 +1,24 @@
+Program {
+	TopLevelItems = [
+		FunctionDefinition {
+			Name = "onePlease",
+			Parameters = [],
+			Body = [
+				ReturnStatement {
+					Expression = NumberExpression {
+						Number = 1
+					}
+				}
+			]
+		},
+		PrintStatement {
+			Arguments = [
+				CallExpression {
+					Callee = "onePlease",
+					Arguments = [
+					]
+				}
+			]
+		}
+	]
+}

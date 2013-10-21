@@ -40,7 +40,7 @@ std::unique_ptr<Token> Lexer::lexIdentifierOrKeyword()
 	auto it_kw = Keywords.find(name);
 
 	if (it_kw != Keywords.end()) {
-		delete name;
+		delete[] name;
 		return std::unique_ptr<Token>(new Token(it_kw->second));
 	} else {
 		return std::unique_ptr<Token>(new Token(Token::Identifier, name));

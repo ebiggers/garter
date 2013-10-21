@@ -1,0 +1,11 @@
+def func1(a):
+	return a + 1;
+enddef
+
+def func2(foo, bar, baz):
+	foo = (bar + ((baz)))**foo;
+	return(baz or not foo and bar**baz / foo + func1(not -bar));
+enddef
+
+print 800, func2(8, 2, func1(3));
+

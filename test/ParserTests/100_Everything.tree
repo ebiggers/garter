@@ -1,0 +1,121 @@
+Program {
+	TopLevelItems = [
+		FunctionDefinition {
+			Name = "func1",
+			Parameters = [ "a" ],
+			Body = [
+				ReturnStatement {
+					Expression = BinaryExpression {
+						Op = "Add",
+						LHS = VariableExpression {
+							Name = "a",
+						},
+						RHS = NumberExpression {
+							Number = 1,
+						},
+					},
+				},
+			],
+		},
+		FunctionDefinition {
+			Name = "func2",
+			Parameters = ["foo", "bar", "baz"],
+			Body = [
+				AssignmentStatement {
+					Variable = VariableExpression {
+						Name = "foo",
+					}, Expression = BinaryExpression {
+						Op = "Exponentiate",
+						LHS = BinaryExpression {
+							Op = "Add",
+							LHS = VariableExpression {
+								Name = "bar",
+							},
+							RHS = VariableExpression {
+								Name = "baz",
+							},
+						},
+						RHS = VariableExpression {
+							Name = "foo",
+						},
+					},
+				},
+				ReturnStatement {
+					Expression = BinaryExpression {
+						Op = "Or",
+						LHS = VariableExpression {
+							Name = "baz",
+						},
+						RHS = BinaryExpression {
+							Op = "And",
+							LHS = UnaryExpression {
+								Op = "Not",
+								Expression = VariableExpression {
+									Name = "foo",
+								},
+							},
+							RHS = BinaryExpression {
+								Op = "Add",
+								LHS = BinaryExpression {
+									Op = "Divide",
+									LHS = BinaryExpression {
+										Op = "Exponentiate",
+										LHS = VariableExpression {
+											Name = "bar",
+										},
+										RHS = VariableExpression {
+											Name = "baz",
+										},
+									},
+									RHS = VariableExpression {
+										Name = "foo",
+									},
+								},
+								RHS = CallExpression {
+									Callee = "func1",
+									Arguments = [
+										UnaryExpression {
+											Op = "Not",
+											Expression = UnaryExpression {
+												Op = "Minus",
+												Expression = VariableExpression {
+													Name = "bar",
+												},
+											},
+										},
+									],
+								},
+							},
+						},
+					},
+				},
+			],
+		},
+		PrintStatement {
+			Arguments = [
+				NumberExpression {
+					Number = 800,
+				},
+				CallExpression {
+					Callee = "func2",
+					Arguments = [
+						NumberExpression {
+							Number = 8,
+						},
+						NumberExpression {
+							Number = 2,
+						},
+						CallExpression {
+							Callee = "func1",
+							Arguments = [
+								NumberExpression {
+									Number = 3,
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+	],
+}

@@ -36,13 +36,13 @@ class StatementAST : public ASTBase {
 class FunctionDefinitionAST : public ASTBase {
 	std::string Name;
 	std::vector<std::string> Parameters;
-	std::vector<std::shared_ptr<StatementAST>> Statements;
+	std::vector<std::shared_ptr<StatementAST>> Body;
 
 public:
 	FunctionDefinitionAST(const std::string & name,
 			      const std::vector<std::string> & parameters,
-			      const std::vector<std::shared_ptr<StatementAST>> & statements)
-		: Name(name), Parameters(parameters), Statements(statements)
+			      const std::vector<std::shared_ptr<StatementAST>> & body)
+		: Name(name), Parameters(parameters), Body(body)
 	{
 	}
 

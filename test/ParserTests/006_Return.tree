@@ -1,0 +1,9 @@
+Program {
+	TopLevelItems = [
+		ReturnStatement {
+			Expression = VariableExpression {
+				Name = "a"
+			}
+		}
+	]
+}

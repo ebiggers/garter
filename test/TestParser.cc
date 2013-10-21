@@ -9,24 +9,32 @@
 
 using namespace garter;
 
-static bool ASTStringsEqual(const char *str1, const char *str2)
+static bool ASTStringsEqual(const char * & str1, const char * & str2)
 {
 	for (;;) {
 		while (isspace(*str1))
 			str1++;
 		while (isspace(*str2))
 			str2++;
-		while (*str1 == ',' && *str2 != ',')
+		while (*str1 == ',' && *str2 != ',') {
 			str1++;
-		while (*str2 == ',' && *str1 != ',')
+			while (isspace(*str1))
+				str1++;
+		}
+		while (*str2 == ',' && *str1 != ',') {
 			str2++;
+			while (isspace(*str2))
+				str2++;
+		}
 		if (*str1 == '\0' || *str2 == '\0') {
 			if (*str1 != '\0' || *str2 != '\0')
 				return false;
 			return true;
 		}
-		if (*str1++ != *str2++)
+		if (*str1 != *str2)
 			return false;
+		str1++;
+		str2++;
 	}
 }
 
@@ -54,19 +62,28 @@ static void doParserTest(const std::string & src_file_path,
 	std::unique_ptr<ProgramAST> ast(parser.buildAST());
 
 	if (ast == nullptr) {
-		std::cerr << "TestParser ERROR: \"" << src_file_path
-			<< " \": AST not built" << std::endl;
+		std::cerr << "TestParser ERROR: \""
+			<< src_file_path << "\": ""AST not built" << std::endl;
 		exit(-1);
 	}
 
 	std::ostringstream os;
 	os << *ast;
 
-	if (!ASTStringsEqual(tree_buffer->getBufferStart(), os.str().c_str())) {
-		std::cerr << "TestParser ERROR: Got\n";
-		std::cerr << os.str() << "\n";
+	const char *cstr1 = tree_buffer->getBufferStart();
+	std::string os_contents(os.str());
+	const char *cstr2 = os_contents.c_str();
+	if (!ASTStringsEqual(cstr1, cstr2)) {
+		std::cerr << "TestParser ERROR: \""
+			<< src_file_path << "\": Got\n\n";
+		std::cerr << os.str() << "\n\n";
 		std::cerr << "but expected:\n";
-		std::cerr << tree_buffer->getBufferStart() << std::endl;
+		std::cerr << tree_buffer->getBufferStart() << "\n\n";
+		std::cerr << "Differences:\n";
+		std::string str1(cstr1, std::min(80UL, strlen(cstr1)));
+		std::string str2(cstr2, std::min(80UL, strlen(cstr2)));
+		std::cerr << "[got]" << str2 << "\n";
+		std::cerr << "[expected]" << str1 << "\n";
 		exit(-1);
 	}
 }

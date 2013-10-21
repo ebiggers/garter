@@ -1,0 +1,11 @@
+Program {
+	TopLevelItems = [
+		PrintStatement {
+			Arguments = [
+				NumberExpression {
+					Number = 1
+				}
+			]
+		}
+	]
+}

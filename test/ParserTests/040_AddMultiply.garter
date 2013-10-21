@@ -1,0 +1,3 @@
+def addMultiply(a, b, c):
+	return a + b * c;
+enddef

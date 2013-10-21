@@ -1,0 +1,23 @@
+Program {
+	TopLevelItems = [
+		PrintStatement {
+			Arguments = [
+				BinaryExpression {
+					Op = "Multiply",
+					LHS = BinaryExpression {
+						Op = "Add",
+						LHS = NumberExpression {
+							Number = 1,
+						},
+						RHS = NumberExpression {
+							Number = 2,
+						},
+					},
+					RHS = NumberExpression {
+						Number = 3,
+					}
+				}
+			]
+		}
+	]
+}

@@ -72,7 +72,7 @@ public:
 
 	~Token() {
 		if (Type == TokenType::Identifier) {
-			delete Name;
+			delete[] Name;
 		}
 	}
 

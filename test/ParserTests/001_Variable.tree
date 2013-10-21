@@ -1,8 +1,8 @@
 Program {
 	TopLevelItems = [
 		ExpressionStatement {
-			Expression = NumberExpression {
-				Number = 1
+			Expression = VariableExpression {
+				Name = "a"
 			}
 		}
 	]

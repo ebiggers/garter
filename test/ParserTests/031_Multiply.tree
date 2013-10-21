@@ -1,0 +1,15 @@
+Program {
+	TopLevelItems = [
+		ExpressionStatement {
+			Expression = BinaryExpression {
+				Op = "Multiply",
+				LHS = NumberExpression {
+					Number = 1
+				},
+				RHS = NumberExpression {
+					Number = 2
+				}
+			}
+		}
+	]
+}

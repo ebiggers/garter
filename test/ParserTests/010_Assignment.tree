@@ -1,0 +1,12 @@
+Program {
+	TopLevelItems = [
+		AssignmentStatement {
+			Variable = VariableExpression {
+				Name = "a"
+			},
+			Expression = NumberExpression {
+				Number = 5
+			}
+		}
+	]
+}

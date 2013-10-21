@@ -1,0 +1,3 @@
+def onePlease():
+	return 1;
+enddef
