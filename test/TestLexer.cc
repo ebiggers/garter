@@ -1,6 +1,7 @@
 #include <frontend/Lexer.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 using namespace garter;
 
@@ -156,10 +157,7 @@ static const struct LexerTestCase {
 
 static void do_test(const LexerTestCase &testcase)
 {
-	std::shared_ptr<llvm::MemoryBuffer>
-		buffer(llvm::MemoryBuffer::getMemBuffer(testcase.Input));
-
-	Lexer lexer(buffer);
+	Lexer lexer(testcase.Input);
 
 	printf("Test string %s\n", testcase.Input);
 

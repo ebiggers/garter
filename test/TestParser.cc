@@ -1,6 +1,7 @@
 #include <frontend/Parser.h>
 #include <iostream>
 #include <algorithm>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
 #include <stdlib.h>
@@ -57,7 +58,7 @@ static void doParserTest(const std::string & src_file_path,
 		exit(-1);
 	}
 
-	Parser parser(std::shared_ptr<llvm::MemoryBuffer>(src_buffer.take()));
+	Parser parser(src_buffer->getBufferStart());
 
 	std::unique_ptr<ProgramAST> ast(parser.buildAST());
 

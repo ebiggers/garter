@@ -1,11 +1,10 @@
+#ifndef _GARTER_LEXER_H_
+#define _GARTER_LEXER_H_
+
 #include <inttypes.h>
-#include <limits.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/system_error.h>
-#include <stdio.h>
 #include <map>
-#include <set>
 #include <memory>
+#include <assert.h>
 
 namespace garter {
 
@@ -85,21 +84,20 @@ private:
 	int32_t _Number;
 
 
-	explicit Token(enum TokenType type)
+	Token(enum TokenType type)
 		: Type(type) { }
 
-	explicit Token(enum TokenType type, char *name)
+	Token(enum TokenType type, char *name)
 		: Type(type), Name(name) { }
 
-	explicit Token(enum TokenType type, int32_t number) 
+	Token(enum TokenType type, int32_t number) 
 		: Type(type), _Number(number) { }
 };
 
 class Lexer {
 private:
-	std::shared_ptr<llvm::MemoryBuffer> Buffer;
-	unsigned long CurrentLineNumber;
 	const char *NextCharPtr;
+	unsigned long CurrentLineNumber;
 	std::map<std::string, Token::TokenType> Keywords;
 
 	static const char * const Tag;
@@ -108,34 +106,10 @@ private:
 	std::unique_ptr<Token> lexIdentifierOrKeyword();
 
 public:
-	explicit Lexer(std::shared_ptr<llvm::MemoryBuffer> buffer)
-		: Buffer(buffer),
-		  CurrentLineNumber(1)
-	{
-		NextCharPtr = buffer->getBufferStart();
-		Keywords.insert(std::make_pair("and", Token::And));
-		Keywords.insert(std::make_pair("def", Token::Def));
-		Keywords.insert(std::make_pair("else", Token::Else));
-		Keywords.insert(std::make_pair("elif", Token::Elif));
-		Keywords.insert(std::make_pair("enddef", Token::EndDef));
-		Keywords.insert(std::make_pair("endfor", Token::EndFor));
-		Keywords.insert(std::make_pair("endif", Token::EndIf));
-		Keywords.insert(std::make_pair("endwhile", Token::EndWhile));
-		Keywords.insert(std::make_pair("for", Token::For));
-		Keywords.insert(std::make_pair("if", Token::If));
-		Keywords.insert(std::make_pair("in", Token::In));
-		Keywords.insert(std::make_pair("not", Token::Not));
-		Keywords.insert(std::make_pair("or", Token::Or));
-		Keywords.insert(std::make_pair("pass", Token::Pass));
-		Keywords.insert(std::make_pair("print", Token::Print));
-		Keywords.insert(std::make_pair("return", Token::Return));
-		Keywords.insert(std::make_pair("while", Token::While));
-	}
-
-	~Lexer() {
-	}
-
+	Lexer(const char *string);
 	std::unique_ptr<Token> getNextToken();
 };
 
 } // End garter namespace
+
+#endif /* _GARTER_LEXER_H_ */

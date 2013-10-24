@@ -1,3 +1,6 @@
+#ifndef _GARTER_PARSER_H_
+#define _GARTER_PARSER_H_
+
 #include <frontend/Lexer.h>
 #include <memory>
 #include <vector>
@@ -18,9 +21,11 @@ public:
 	}
 };
 
+class StatementAST;
+
 class ProgramAST : public ASTBase {
-	std::vector<std::shared_ptr<ASTBase>> TopLevelItems;
 public:
+	std::vector<std::shared_ptr<ASTBase>> TopLevelItems;
 	ProgramAST(const std::vector<std::shared_ptr<ASTBase>> &top_level_items)
 		: TopLevelItems(top_level_items)
 	{
@@ -29,16 +34,12 @@ public:
 	void print(std::ostream & os) const;
 };
 
-class StatementAST : public ASTBase {
-};
-
-
 class FunctionDefinitionAST : public ASTBase {
+public:
 	std::string Name;
 	std::vector<std::string> Parameters;
 	std::vector<std::shared_ptr<StatementAST>> Body;
 
-public:
 	FunctionDefinitionAST(const std::string & name,
 			      const std::vector<std::string> & parameters,
 			      const std::vector<std::shared_ptr<StatementAST>> & body)
@@ -49,25 +50,39 @@ public:
 	void print(std::ostream & os) const;
 };
 
-class ExpressionAST : public ASTBase {
-};
+class AssignmentStatementAST;
+class ExpressionStatementAST;
+class IfStatementAST;
+class PassStatementAST;
+class PrintStatementAST;
+class ReturnStatementAST;
+class WhileStatementAST;
 
-class VariableExpressionAST : public ExpressionAST {
-	std::string Name;
+class StatementASTVisitor {
 public:
-	VariableExpressionAST(const std::string &name)
-		: Name(name)
-	{
-	}
-
-	void print(std::ostream & os) const;
+	virtual void visit(AssignmentStatementAST &) = 0;
+	virtual void visit(ExpressionStatementAST &) = 0;
+	virtual void visit(IfStatementAST &) = 0;
+	virtual void visit(PassStatementAST &) = 0;
+	virtual void visit(PrintStatementAST &) = 0;
+	virtual void visit(ReturnStatementAST &) = 0;
+	virtual void visit(WhileStatementAST &) = 0;
 };
+
+
+class StatementAST : public ASTBase {
+public:
+	virtual void acceptVisitor(StatementASTVisitor & v) = 0;
+};
+
+class VariableExpressionAST;
+class ExpressionAST;
 
 class AssignmentStatementAST : public StatementAST {
+public:
 	std::shared_ptr<VariableExpressionAST> Variable;
 	std::shared_ptr<ExpressionAST> Expression;
 
-public:
 	AssignmentStatementAST(std::shared_ptr<VariableExpressionAST> lhs,
 			       std::shared_ptr<ExpressionAST> rhs)
 		: Variable(lhs), Expression(rhs)
@@ -75,32 +90,28 @@ public:
 	}
 
 	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
-class PassStatementAST : public StatementAST {
+class ExpressionStatementAST : public StatementAST {
 public:
-	void print(std::ostream & os) const;
-};
-
-class ReturnStatementAST : public StatementAST {
 	std::shared_ptr<ExpressionAST> Expression;
-public:
-	ReturnStatementAST(std::shared_ptr<ExpressionAST> expression)
+
+	ExpressionStatementAST(std::shared_ptr<ExpressionAST> expression)
 		: Expression(expression)
 	{
 	}
-
 	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
 class IfStatementAST : public StatementAST {
 public:
 	class ElifClause {
-	private:
+	public:
 		std::shared_ptr<ExpressionAST> Condition;
 		std::vector<std::shared_ptr<StatementAST>> Body;
 
-	public:
 		ElifClause(std::shared_ptr<ExpressionAST> condition,
 			   const std::vector<std::shared_ptr<StatementAST>> & body)
 			: Condition(condition),
@@ -111,13 +122,11 @@ public:
 		void print(std::ostream & os) const;
 	};
 
-private:
 	std::shared_ptr<ExpressionAST> Condition;
 	std::vector<std::shared_ptr<StatementAST>> Body;
 	std::vector<std::shared_ptr<ElifClause>> ElifClauses;
 	std::vector<std::shared_ptr<StatementAST>> ElseBody;
 
-public:
 	IfStatementAST(std::shared_ptr<ExpressionAST> condition,
 		       const std::vector<std::shared_ptr<StatementAST>> & body,
 		       const std::vector<std::shared_ptr<ElifClause>> & elif_clauses,
@@ -130,13 +139,44 @@ public:
 	}
 
 	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
+};
+
+class PassStatementAST : public StatementAST {
+public:
+	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
+};
+
+class PrintStatementAST : public StatementAST {
+public:
+	std::vector<std::shared_ptr<ExpressionAST>> Arguments;
+
+	PrintStatementAST(const std::vector<std::shared_ptr<ExpressionAST>> & arguments)
+		: Arguments(arguments)
+	{
+	}
+	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
+};
+
+class ReturnStatementAST : public StatementAST {
+public:
+	std::shared_ptr<ExpressionAST> Expression;
+	ReturnStatementAST(std::shared_ptr<ExpressionAST> expression)
+		: Expression(expression)
+	{
+	}
+
+	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
 class WhileStatementAST : public StatementAST {
+public:
 	std::shared_ptr<ExpressionAST> Condition;
 	std::vector<std::shared_ptr<StatementAST>> Body;
 
-public:
 	WhileStatementAST(std::shared_ptr<ExpressionAST> condition,
 			  const std::vector<std::shared_ptr<StatementAST>> & body)
 		: Condition(condition),
@@ -144,30 +184,28 @@ public:
 	{
 	}
 	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
-class PrintStatementAST : public StatementAST {
-	std::vector<std::shared_ptr<ExpressionAST>> Arguments;
+class BinaryExpressionAST;
+class CallExpressionAST;
+class NumberExpressionAST;
+class UnaryExpressionAST;
+class VariableExpressionAST;
 
+class ExpressionASTVisitor {
 public:
-	PrintStatementAST(const std::vector<std::shared_ptr<ExpressionAST>> & arguments)
-		: Arguments(arguments)
-	{
-	}
-	void print(std::ostream & os) const;
+	virtual void visit(BinaryExpressionAST &) = 0;
+	virtual void visit(CallExpressionAST &) = 0;
+	virtual void visit(NumberExpressionAST &) = 0;
+	virtual void visit(UnaryExpressionAST &) = 0;
+	virtual void visit(VariableExpressionAST &) = 0;
 };
 
-class ExpressionStatementAST : public StatementAST {
-	std::shared_ptr<ExpressionAST> Expression;
-
+class ExpressionAST : public ASTBase {
 public:
-	ExpressionStatementAST(std::shared_ptr<ExpressionAST> expression)
-		: Expression(expression)
-	{
-	}
-	void print(std::ostream & os) const;
+	virtual void acceptVisitor(ExpressionASTVisitor & v) = 0;
 };
-
 
 class BinaryExpressionAST : public ExpressionAST {
 public:
@@ -181,21 +219,18 @@ public:
 		GreaterThanOrEqualTo,
 		EqualTo,
 		NotEqualTo,
-		In,
-		NotIn,
 		Add,
 		Subtract,
 		Multiply,
 		Divide,
 		Modulo,
 		Exponentiate,
+		In,
+		NotIn,
 	};
 
-private:
 	enum BinaryOp Op;
 	std::shared_ptr<ExpressionAST> LHS, RHS;
-
-public:
 
 	BinaryExpressionAST(enum BinaryOp op,
 			    std::shared_ptr<ExpressionAST> lhs,
@@ -206,6 +241,30 @@ public:
 
 	const char *getOpStr() const;
 	void print(std::ostream & os) const;
+	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
+};
+
+class CallExpressionAST : public ExpressionAST {
+public:
+	std::string Callee;
+	std::vector<std::shared_ptr<ExpressionAST>> Arguments;
+
+	CallExpressionAST(const std::string &callee,
+			  const std::vector<std::shared_ptr<ExpressionAST>> &arguments)
+		: Callee(callee), Arguments(arguments)
+	{
+	}
+	void print(std::ostream & os) const;
+	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
+};
+
+class NumberExpressionAST : public ExpressionAST {
+public:
+	int32_t Number;
+	NumberExpressionAST(int32_t number) : Number (number) {
+	}
+	void print(std::ostream & os) const;
+	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
 class UnaryExpressionAST : public ExpressionAST {
@@ -216,11 +275,8 @@ public:
 		Plus,
 	};
 
-private:
 	enum UnaryOp Op;
 	std::shared_ptr<ExpressionAST> Expression;
-
-public:
 
 	UnaryExpressionAST(enum UnaryOp op,
 			   std::shared_ptr<ExpressionAST> expression)
@@ -229,27 +285,19 @@ public:
 	}
 	const char *getOpStr() const;
 	void print(std::ostream & os) const;
+	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
-class NumberExpressionAST : public ExpressionAST {
-	int32_t Number;
+class VariableExpressionAST : public ExpressionAST {
 public:
-	NumberExpressionAST(int32_t number) : Number (number) {
-	}
-	void print(std::ostream & os) const;
-};
-
-class CallExpressionAST : public ExpressionAST {
-	std::string Callee;
-	std::vector<std::shared_ptr<ExpressionAST>> Arguments;
-
-public:
-	CallExpressionAST(const std::string &callee,
-			  const std::vector<std::shared_ptr<ExpressionAST>> &arguments)
-		: Callee(callee), Arguments(arguments)
+	std::string Name;
+	VariableExpressionAST(const std::string &name)
+		: Name(name)
 	{
 	}
+
 	void print(std::ostream & os) const;
+	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
 class Parser {
@@ -300,8 +348,7 @@ private:
 			NextToken = Lexer.getNextToken();
 	}
 public:
-	explicit Parser(std::shared_ptr<llvm::MemoryBuffer> buffer) :
-		Lexer(buffer)
+	Parser(const char *string) : Lexer(string)
 	{
 		nextToken();
 	}
@@ -312,3 +359,5 @@ public:
 };
 
 } // End garter namespace
+
+#endif /* _GARTER_PARSER_H_ */

@@ -204,19 +204,33 @@ next_char:
 		}
 
 	case '\0':
-		// '\0' should mark end of buffer
-		if (NextCharPtr == Buffer->getBufferEnd()) {
-			return std::unique_ptr<Token>(new Token(Token::EndOfFile));
-		} else {
-			fprintf(stderr, "%s: Unexpected embedded null "
-				"character on line %lu\n",
-				Tag, CurrentLineNumber);
-			return std::unique_ptr<Token>(new Token(Token::Error));
-		}
+		// '\0' marks end of buffer
+		return std::unique_ptr<Token>(new Token(Token::EndOfFile));
 
 	default:
 		fprintf(stderr, "%s: Unexpected character '%c' on line %lu\n",
 			Tag, *NextCharPtr, CurrentLineNumber);
 		return std::unique_ptr<Token>(new Token(Token::Error));
 	}
+}
+
+Lexer::Lexer(const char *string) : NextCharPtr(string), CurrentLineNumber(1)
+{
+	Keywords.insert(std::make_pair("and", Token::And));
+	Keywords.insert(std::make_pair("def", Token::Def));
+	Keywords.insert(std::make_pair("else", Token::Else));
+	Keywords.insert(std::make_pair("elif", Token::Elif));
+	Keywords.insert(std::make_pair("enddef", Token::EndDef));
+	Keywords.insert(std::make_pair("endfor", Token::EndFor));
+	Keywords.insert(std::make_pair("endif", Token::EndIf));
+	Keywords.insert(std::make_pair("endwhile", Token::EndWhile));
+	Keywords.insert(std::make_pair("for", Token::For));
+	Keywords.insert(std::make_pair("if", Token::If));
+	Keywords.insert(std::make_pair("in", Token::In));
+	Keywords.insert(std::make_pair("not", Token::Not));
+	Keywords.insert(std::make_pair("or", Token::Or));
+	Keywords.insert(std::make_pair("pass", Token::Pass));
+	Keywords.insert(std::make_pair("print", Token::Print));
+	Keywords.insert(std::make_pair("return", Token::Return));
+	Keywords.insert(std::make_pair("while", Token::While));
 }
