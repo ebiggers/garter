@@ -3,16 +3,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/system_error.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Path.h>
+#include <llvm/Support/system_error.h>
 
 using namespace garter;
 
 static llvm::cl::opt<std::string>
-InputFilename(llvm::cl::Positional, llvm::cl::desc("<input source>"));
+InputFilename(llvm::cl::Positional, llvm::cl::Required, llvm::cl::desc("<input source>"));
 
 static llvm::cl::opt<std::string>
 OutputFilename("o", llvm::cl::desc("Output filename"), llvm::cl::value_desc("filename"));
@@ -66,7 +67,9 @@ int main(int argc, char **argv)
 
 	if (OutputFilename == "") {
 		const char * extension = (LLVMIROnly ? ".ll" : ".o");
-		OutputFilename = llvm::sys::path::stem(InputFilename).str() + extension;
+		llvm::SmallString<255> output_filename(InputFilename);
+		llvm::sys::path::replace_extension(output_filename, extension);
+		OutputFilename = output_filename.str();
 	}
 
 	return compileFile(InputFilename.c_str(), OutputFilename.c_str());

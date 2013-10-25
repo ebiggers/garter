@@ -1,0 +1,18 @@
+def __garter_exponentiate_recursive(base, exponent):
+	if exponent == 1:
+		return base;
+	else:
+		return __garter_exponentiate_recursive(base, exponent / 2) *
+		       __garter_exponentiate_recursive(base, (exponent + 1) / 2);
+	endif
+enddef
+
+def __garter_exponentiate(base, exponent):
+	if exponent < 0:
+		return 0;
+	elif exponent == 0:
+		return 1;
+	else:
+		return __garter_exponentiate_recursive(base, exponent);
+	endif
+enddef

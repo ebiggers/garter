@@ -831,6 +831,8 @@ Parser::parseIfStatement()
 		} while (CurrentToken->getType() != Token::EndIf);
 	}
 
+	nextToken();
+
 	return std::unique_ptr<IfStatementAST>(
 			new IfStatementAST(std::move(condition), statements,
 					   elif_clauses, else_statements));

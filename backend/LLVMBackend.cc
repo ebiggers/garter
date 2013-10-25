@@ -116,8 +116,8 @@ public:
 
 // Given a LLVM IR integer value @val, generate LLVM IR in the current function
 // testing whether the value is zero or not.  If @is_zero, returns a LLVM IR
-// value that represents 1 if the input value is 0, or 0 if the input value is
-// nonzero.  If !@in_zero, the return values are inverted.
+// value (1-bit integer!!!) that represents 1 if the input value is 0, or 0 if
+// the input value is nonzero.  If !@in_zero, the return values are inverted.
 Value *LLVMCodeGeneratorVisitor::isZeroOrNotZero(Value *val, bool is_zero)
 {
 	BasicBlock *zerobb, *nonzerobb;
@@ -135,15 +135,15 @@ Value *LLVMCodeGeneratorVisitor::isZeroOrNotZero(Value *val, bool is_zero)
 	Backend.Builder.CreateCondBr(cmpresult, zerobb, nonzerobb);
 
 	Backend.Builder.SetInsertPoint(zerobb);
-	zeroresult = Backend.Builder.getInt32(is_zero ? 1 : 0);
+	zeroresult = Backend.Builder.getInt1(is_zero ? 1 : 0);
 	Backend.Builder.CreateBr(contbb);
 
 	Backend.Builder.SetInsertPoint(nonzerobb);
-	nonzeroresult = Backend.Builder.getInt32(is_zero ? 0 : 1);
+	nonzeroresult = Backend.Builder.getInt1(is_zero ? 0 : 1);
 	Backend.Builder.CreateBr(contbb);
 
 	Backend.Builder.SetInsertPoint(contbb);
-	phi = Backend.Builder.CreatePHI(Backend.Int32Ty, 2);
+	phi = Backend.Builder.CreatePHI(Backend.Builder.getInt1Ty(), 2);
 	phi->addIncoming(zeroresult, zerobb);
 	phi->addIncoming(nonzeroresult, nonzerobb);
 	return phi;
@@ -400,6 +400,7 @@ void LLVMCodeGeneratorVisitor::visit(IfStatementAST & stmt)
 			stmt.ElifClauses[i - 1]->Condition->acceptVisitor(*this);
 		if (ExpressionValue == nullptr)
 			return;
+
 		Value *cond = isNotZero(ExpressionValue);
 
 		// Chose next basic block based on condition
