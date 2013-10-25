@@ -15,7 +15,26 @@
 using namespace garter;
 using namespace llvm;
 
-extern "C" int32_t __garter_print(int32_t, ...);
+extern "C"
+int32_t __garter_print(int32_t nargs, ...);
+
+extern "C"
+int32_t __garter_exponentiate(int32_t base, int32_t exponent);
+
+extern "C"
+int32_t __attribute__((weak)) __garter_print(int32_t nargs __attribute__((unused)), ...)
+{
+	fprintf(stderr, "__garter_print(): unimplemented stub (not linked with runtime)\n");
+	abort();
+}
+extern "C"
+int32_t __attribute__((weak)) __garter_exponentiate(int32_t base __attribute__((unused)),
+						    int32_t exponent __attribute__((unused)))
+{
+	fprintf(stderr, "__garter_exponentiate(): unimplemented stub (not linked with runtime)\n");
+	abort();
+}
+
 
 LLVMBackend::LLVMBackend()
 		: Ctx(),
@@ -743,10 +762,17 @@ int LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
 			Engine = EngineBuilder(Mod).create();
 
 
-			FunctionType *funcTy = FunctionType::get(Int32Ty, Int32Ty, true);
-			Constant *print = Mod->getOrInsertFunction("__garter_print", funcTy);
+			FunctionType *print_type = FunctionType::get(Int32Ty, Int32Ty, true);
+			Constant *print = Mod->getOrInsertFunction("__garter_print", print_type);
 			Engine->addGlobalMapping(static_cast<GlobalValue*>(print),
 						 (void*)__garter_print);
+
+			std::vector<Type*> param_types(2, Int32Ty);
+			FunctionType *exp_type = FunctionType::get(Int32Ty, param_types, false);
+			Constant *exp = Mod->getOrInsertFunction("__garter_exponentiate", exp_type);
+			Engine->addGlobalMapping(static_cast<GlobalValue*>(exp),
+						 (void*)__garter_exponentiate);
+
 		}
 		char buf[50];
 		sprintf(buf, "__garter_anonymous%lu", StatementNumber++);

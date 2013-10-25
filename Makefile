@@ -1,14 +1,13 @@
 CXX := clang++
-CC := clang
 LLVM_CXXFLAGS :=
 LLVM_CPPFLAGS := $(shell llvm-config --cppflags)
 LLVM_LDFLAGS  := $(shell llvm-config --ldflags)
-LLVM_LDLIBS   := $(shell llvm-config --libs)
-CFLAGS := -Wall -Wextra -O0 -g
-CXXFLAGS := $(LLVM_CXXFLAGS) $(CFLAGS) -MMD -std=c++11
+#LLVM_LDLIBS   := $(shell llvm-config --libs)
+LLVM_LDLIBS   := -lLLVM-3.3
+CXXFLAGS := $(LLVM_CXXFLAGS) -Wall -Wextra -O2 -MMD -std=c++11
 CPPFLAGS := $(LLVM_CPPFLAGS) -I.
 LDFLAGS := $(LLVM_LDFLAGS)
-LDLIBS := $(LLVM_LDLIBS) -lpthread -ldl
+LDLIBS := $(LLVM_LDLIBS)
 COMPILER_EXE := garterc
 INTERPRETER_EXE := garteri
 
@@ -28,10 +27,11 @@ TEST_SRC := $(wildcard test/*.cc)
 TEST_OBJ := $(TEST_SRC:%.cc=%.o)
 TEST_EXE := $(TEST_SRC:%.cc=%)
 
-COMPILER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(RUNTIME_CC_OBJ) garterc.o
-INTERPRETER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(RUNTIME_OBJ) garteri.o
+COMPILER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(COMPILER_EXE).o
+INTERPRETER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(RUNTIME_OBJ) $(INTERPRETER_EXE).o
 
-ALL_CC_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(TEST_OBJ) $(RUNTIME_CC_OBJ) garterc.o garteri.o
+ALL_CC_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(TEST_OBJ) \
+			$(RUNTIME_CC_OBJ) $(COMPILER_EXE).o $(INTERPRETER_EXE).o
 ALL_CC_DEP := $(ALL_CC_OBJ:%.o=%.d)
 ALL_OBJ := $(ALL_CC_OBJ) $(RUNTIME_GA_OBJ)
 ALL_EXE := $(COMPILER_EXE) $(INTERPRETER_EXE) $(TEST_EXE)

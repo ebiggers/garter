@@ -347,15 +347,9 @@ private:
 			NextToken = Lexer.getNextToken();
 	}
 public:
-	Parser(const char *str) : Lexer(str)
-	{
-		nextToken();
-	}
+	Parser(const char *str) : Lexer(str) { }
 
-	Parser(std::istream & is) : Lexer(is)
-	{
-		nextToken();
-	}
+	Parser(std::istream & is) : Lexer(is) { }
 
 	~Parser() { }
 

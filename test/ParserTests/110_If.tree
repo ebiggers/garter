@@ -1,0 +1,66 @@
+Program {
+	TopLevelItems = [
+		AssignmentStatement {
+			Variable = VariableExpression {
+				Name = "n",
+			},
+			Expression = NumberExpression {
+				Number = 0,
+			},
+		},
+		IfStatement {
+			Condition = BinaryExpression {
+				Op = "EqualTo",
+				LHS = VariableExpression {
+					Name = "n",
+				},
+				RHS = NumberExpression {
+					Number = 0,
+				},
+			},
+			Body = [
+				AssignmentStatement {
+					Variable = VariableExpression {
+						Name = "n",
+					},
+					Expression = NumberExpression {
+						Number = 1,
+					},
+				},
+			],
+			ElifClauses = [
+				ElifClause {
+					Condition = BinaryExpression {
+						Op = "EqualTo",
+						LHS = VariableExpression {
+							Name = "n",
+						},
+						RHS = NumberExpression {
+							Number = 1,
+						},
+					},
+					Body = [
+						AssignmentStatement {
+							Variable = VariableExpression {
+								Name = "n",
+							},
+							Expression = NumberExpression {
+								Number = 2,
+							},
+						},
+					],
+				},
+			],
+			ElseBody = [
+				AssignmentStatement {
+					Variable = VariableExpression {
+						Name = "n",
+					},
+					Expression = NumberExpression {
+						Number = 3,
+					},
+				},
+			],
+		},
+	],
+}

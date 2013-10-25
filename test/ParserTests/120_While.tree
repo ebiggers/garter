@@ -1,0 +1,46 @@
+Program {
+	TopLevelItems = [
+		AssignmentStatement {
+			Variable = VariableExpression {
+				Name = "n",
+			},
+			Expression = NumberExpression {
+				Number = 0,
+			},
+		},
+		WhileStatement {
+			Condition = BinaryExpression {
+				Op = "LessThan",
+				LHS = VariableExpression {
+					Name = "n",
+				},
+				RHS = NumberExpression {
+					Number = 10,
+				},
+			},
+			Body = [
+				PrintStatement {
+					Arguments = [
+						VariableExpression {
+							Name = "n",
+						},
+					],
+				},
+				AssignmentStatement {
+					Variable = VariableExpression {
+						Name = "n",
+					},
+					Expression = BinaryExpression {
+						Op = "Add",
+						LHS = VariableExpression {
+							Name = "n",
+						},
+						RHS = NumberExpression {
+							Number = 1,
+						},
+					},
+				},
+			],
+		},
+	],
+}

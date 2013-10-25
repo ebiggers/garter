@@ -1,9 +1,23 @@
 #include <frontend/Parser.h>
 #include <backend/LLVMBackend.h>
+#include <fstream>
+#include <iostream>
+#include <string.h>
+#include <errno.h>
 
-int main()
+int main(int argc, char **argv)
 {
-	garter::Parser parser(std::cin);
+	std::istream *is;
+	std::ifstream infile;
+	if (argc > 1) {
+		infile.open(argv[1]);
+		if (infile.fail())
+			std::cerr << "Can't open " << argv[1] << ": " << strerror(errno) << std::endl;
+		is = &infile;
+	} else {
+		is = &std::cin;
+	}
+	garter::Parser parser(*is);
 	garter::LLVMBackend backend;
 	std::unique_ptr<garter::ASTBase> top_level_item;
 

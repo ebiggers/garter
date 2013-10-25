@@ -115,7 +115,7 @@ void IfStatementAST::print(std::ostream & os) const
 {
 	os << "IfStatement {";
 	os << "Condition = " << *Condition << ",";
-	os << "Statements = [";
+	os << "Body = [";
 	for (auto stmtptr : Body)
 		os << *stmtptr << ",";
 	os << "],";
@@ -125,7 +125,7 @@ void IfStatementAST::print(std::ostream & os) const
 		os << ",";
 	}
 	os << "],";
-	os << "ElseStatements = [";
+	os << "ElseBody = [";
 	for (auto stmtptr : ElseBody)
 		os << *stmtptr << ",";
 	os << "]";
@@ -136,7 +136,7 @@ void IfStatementAST::ElifClause::print(std::ostream & os) const
 {
 	os << "ElifClause {";
 	os << "Condition = " << *Condition << ",";
-	os << "Statements = [";
+	os << "Body = [";
 	for (auto stmtptr : Body)
 		os << *stmtptr << ",";
 	os << "]";
@@ -695,8 +695,8 @@ Parser::parseFunctionDefinition()
 		if (statement == nullptr)
 			return nullptr;
 		statements.push_back(std::move(statement));
+		nextToken();
 	} while (CurrentToken->getType() != Token::EndDef);
-	nextToken();
 
 	return std::unique_ptr<FunctionDefinitionAST>(
 			new FunctionDefinitionAST(name, parameters, statements, is_extern));
@@ -725,7 +725,6 @@ Parser::parseAssignmentStatement()
 		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
-	nextToken();
 
 	return std::unique_ptr<AssignmentStatementAST>(
 			new AssignmentStatementAST(std::move(lhs),
@@ -747,8 +746,6 @@ Parser::parseExpressionStatement()
 		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
-
-	nextToken();
 
 	return std::unique_ptr<ExpressionStatementAST>(
 			new ExpressionStatementAST(std::move(expression)));
@@ -784,6 +781,7 @@ Parser::parseIfStatement()
 		if (statement == nullptr)
 			return nullptr;
 		statements.push_back(std::move(statement));
+		nextToken();
 	} while (CurrentToken->getType() != Token::EndIf &&
 		 CurrentToken->getType() != Token::Else &&
 		 CurrentToken->getType() != Token::Elif);
@@ -812,6 +810,7 @@ Parser::parseIfStatement()
 			if (statement == nullptr)
 				return nullptr;
 			elif_statements.push_back(std::move(statement));
+			nextToken();
 		} while (CurrentToken->getType() != Token::EndIf &&
 			 CurrentToken->getType() != Token::Else &&
 			 CurrentToken->getType() != Token::Elif);
@@ -838,10 +837,9 @@ Parser::parseIfStatement()
 			if (statement == nullptr)
 				return nullptr;
 			else_statements.push_back(std::move(statement));
+			nextToken();
 		} while (CurrentToken->getType() != Token::EndIf);
 	}
-
-	nextToken();
 
 	return std::unique_ptr<IfStatementAST>(
 			new IfStatementAST(std::move(condition), statements,
@@ -862,8 +860,6 @@ Parser::parsePassStatement()
 		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
-
-	nextToken();
 
 	return std::unique_ptr<PassStatementAST>(new PassStatementAST());
 }
@@ -900,8 +896,6 @@ Parser::parsePrintStatement()
 		}
 	}
 
-	nextToken();
-
 	return std::unique_ptr<PrintStatementAST>(
 			new PrintStatementAST(expressions));
 }
@@ -925,8 +919,6 @@ Parser::parseReturnStatement()
 		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
-
-	nextToken();
 
 	return std::unique_ptr<ReturnStatementAST>(
 				new ReturnStatementAST(std::move(expression)));
@@ -958,9 +950,8 @@ Parser::parseWhileStatement()
 		if (statement == nullptr)
 			return nullptr;
 		body.push_back(std::move(statement));
+		nextToken();
 	} while (CurrentToken->getType() != Token::EndWhile);
-
-	nextToken();
 
 	return std::unique_ptr<WhileStatementAST>(
 				new WhileStatementAST(std::move(condition), body));
@@ -1007,6 +998,7 @@ Parser::parseStatement()
 std::unique_ptr<ASTBase>
 Parser::parseTopLevelItem()
 {
+	nextToken();
 	switch (CurrentToken->getType()) {
 	case Token::Error:
 	case Token::EndOfFile:
