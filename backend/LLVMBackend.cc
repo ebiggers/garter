@@ -1,16 +1,19 @@
 #include <backend/LLVMBackend.h>
 #include <frontend/Parser.h>
 
+#include <llvm/Assembly/PrintModulePass.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/JIT.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/ToolOutputFile.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/FormattedStream.h>
-#include <llvm/Support/TargetRegistry.h>
-#include <llvm/Support/Host.h>
-#include <llvm/ExecutionEngine/JIT.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/PassManager.h>
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/Host.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #include <iostream>
 
 using namespace garter;
@@ -687,10 +690,17 @@ bool LLVMBackend::generateProgramCode(const ProgramAST & program)
 bool LLVMBackend::compileProgram(const ProgramAST & program,
 				 const char *out_filename, bool obj_output)
 {
+	std::string err_str;
+	std::string triple;
+	std::string cpu;
+	std::string features;
+	TargetOptions options;
+	const Target *target;
+	std::unique_ptr<TargetMachine> mach;
+	PassManager mgr;
+
 	if (!generateProgramCode(program))
 		return false;
-
-	std::string err_str;
 
 	/* XXX: llvm::sys::fs::F_Binary flag should be used to open the output
 	 * file, but it was not available in LLVM version being tested.  */
@@ -700,36 +710,33 @@ bool LLVMBackend::compileProgram(const ProgramAST & program,
 		return false;
 	}
 
+	formatted_raw_ostream out(os.os());
+
+	llvm::InitializeAllTargets();
+	llvm::InitializeAllTargetMCs();
+	llvm::InitializeAllAsmPrinters();
+
+	triple = sys::getDefaultTargetTriple();
+	cpu = sys::getHostCPUName();
+
+	target = TargetRegistry::lookupTarget(triple, err_str);
+	if (target == nullptr) {
+		std::cerr << "ERROR: " << err_str << std::endl;
+		return false;
+	}
+
+	mach.reset(target->createTargetMachine(triple, cpu, features, options));
+	if (mach == nullptr) {
+		std::cerr << "ERROR: couldn't create TargetMachine" << std::endl;
+		return false;
+	}
+
+	PassManagerBuilder builder;
+	builder.OptLevel = 2;
+	builder.Inliner = llvm::createFunctionInliningPass();
+	builder.populateModulePassManager(mgr);
+
 	if (obj_output) {
-		std::string err_str;
-		std::string triple;
-		std::string cpu;
-		std::string features;
-		TargetOptions options;
-		const Target *target;
-		std::unique_ptr<TargetMachine> mach;
-		PassManager mgr;
-		formatted_raw_ostream out(os.os());
-
-		llvm::InitializeAllTargets();
-		llvm::InitializeAllTargetMCs();
-		llvm::InitializeAllAsmPrinters();
-
-		triple = sys::getDefaultTargetTriple();
-		cpu = sys::getHostCPUName();
-
-		target = TargetRegistry::lookupTarget(triple, err_str);
-		if (target == nullptr) {
-			std::cerr << "ERROR: " << err_str << std::endl;
-			return false;
-		}
-
-		mach.reset(target->createTargetMachine(triple, cpu, features, options));
-		if (mach == nullptr) {
-			std::cerr << "ERROR: couldn't create TargetMachine" << std::endl;
-			return false;
-		}
-
 		if (mach->addPassesToEmitFile(mgr, out,
 					      TargetMachine::CGFT_ObjectFile,
 					      false))
@@ -738,13 +745,12 @@ bool LLVMBackend::compileProgram(const ProgramAST & program,
 				"to create object file" << std::endl;
 			return false;
 		}
-		mgr.run(*Mod);
 	} else {
-		Mod->print(os.os(), nullptr);
+		mgr.add(llvm::createPrintModulePass(&out));
 	}
 
+	mgr.run(*Mod);
 	os.keep();
-
 	return true;
 }
 
