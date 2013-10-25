@@ -17,7 +17,7 @@ using namespace llvm;
 
 LLVMBackend::LLVMBackend()
 		: Ctx(),
-		  Mod("", Ctx),
+		  Mod(new Module("", Ctx)),
 		  Builder(Ctx),
 		  Int32Ty(Builder.getInt32Ty()),
 		  Engine(nullptr)
@@ -26,7 +26,10 @@ LLVMBackend::LLVMBackend()
 
 LLVMBackend::~LLVMBackend()
 {
-	delete Engine;
+	if (Engine == nullptr)
+		delete Mod;
+	else
+		delete Engine;
 }
 
 // Given the AST node for a function definition, create and return the
@@ -51,7 +54,10 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 	} else {
 		linkage = Function::InternalLinkage;
 	}
-	Function *f = Function::Create(funcTy, linkage, func.Name, &Mod);
+	Function *f = Function::Create(funcTy, linkage, func.Name, Mod);
+	fprintf(stderr, "created %p\n", f);
+
+	assert(f != nullptr);
 
 	// Check for multiple definition
 	if (f->getName() != func.Name) {
@@ -69,6 +75,7 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 			argptr->setName(func.Parameters[i]);
 		}
 	}
+	fprintf(stderr, "return %p\n", f);
 	return f;
 }
 
@@ -246,7 +253,7 @@ void LLVMCodeGeneratorVisitor::visit(BinaryExpressionAST & expr)
 				FunctionType::get(Backend.Int32Ty, param_types,
 						  false);
 			Constant * exp =
-				Backend.Mod.getOrInsertFunction("__garter_exponentiate",
+				Backend.Mod->getOrInsertFunction("__garter_exponentiate",
 								exp_type);
 
 			ExpressionValue = Backend.Builder.CreateCall2(exp,
@@ -272,7 +279,7 @@ void LLVMCodeGeneratorVisitor::visit(BinaryExpressionAST & expr)
 // function is returned in this->ExpressionValue.
 void LLVMCodeGeneratorVisitor::visit(CallExpressionAST & expr)
 {
-	Function *callee = Backend.Mod.getFunction(expr.Callee);
+	Function *callee = Backend.Mod->getFunction(expr.Callee);
 
 	// Make sure the called function is actually declared
 	if (callee == nullptr) {
@@ -469,7 +476,7 @@ void LLVMCodeGeneratorVisitor::visit(PrintStatementAST & stmt)
 
 	// Retrieve print function (in runtime library)
 	FunctionType *funcTy = FunctionType::get(Backend.Int32Ty, Backend.Int32Ty, true);
-	Constant *print = Backend.Mod.getOrInsertFunction("__garter_print", funcTy);
+	Constant *print = Backend.Mod->getOrInsertFunction("__garter_print", funcTy);
 	assert(print != nullptr);
 
 	// Build a vector of llvm::Value pointers representing the function
@@ -556,7 +563,7 @@ void LLVMCodeGeneratorVisitor::visit(WhileStatementAST & stmt)
 // Returns nullptr on failure; otherwise the llvm::Function pointer
 Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & func)
 {
-	Function * f = Mod.getFunction(func.Name);
+	Function * f = Mod->getFunction(func.Name);
 
 	assert(f != nullptr);
 
@@ -614,8 +621,7 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 	}
 
 	std::unique_ptr<FunctionDefinitionAST> main_ast (
-		new FunctionDefinitionAST("main", std::vector<std::string>(),
-					  main_body, true));
+		new FunctionDefinitionAST("main", {}, main_body, true));
 	if (nullptr == generateFunctionPrototype(*main_ast))
 		return 1;
 
@@ -690,9 +696,9 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 				"to create object file" << std::endl;
 			return 1;
 		}
-		mgr.run(Mod);
+		mgr.run(*Mod);
 	} else {
-		Mod.print(os.os(), nullptr);
+		Mod->print(os.os(), nullptr);
 	}
 
 	os.keep();
@@ -700,21 +706,22 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 	return 0;
 }
 
-int LLVMBackend::executeTopLevelItem(const ASTBase & top_level_item)
+int LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
 {
-	const FunctionDefinitionAST * func =
-		dynamic_cast<const FunctionDefinitionAST *>(&top_level_item);
-	const StatementAST * stmt =
-		dynamic_cast<const StatementAST *>(&top_level_item);
+	std::shared_ptr<FunctionDefinitionAST> func =
+		std::dynamic_pointer_cast<FunctionDefinitionAST>(top_level_item);
+	std::shared_ptr<StatementAST> stmt =
+		std::dynamic_pointer_cast<StatementAST>(top_level_item);
 	Function *f;
 
+	fprintf(stderr, "exec %p\n", top_level_item.get());
 	if (stmt) {
 		if (Engine == nullptr) {
 			llvm::InitializeNativeTarget();
-			Engine = EngineBuilder(&Mod).create();
+			Engine = EngineBuilder(Mod).create();
 		}
-		std::shared_ptr<StatementAST> stmtptr(const_cast<StatementAST*>(stmt));
-		FunctionDefinitionAST func("", {}, {stmtptr});
+		fprintf(stderr, "comp stmt\n");
+		FunctionDefinitionAST func("__garter_anonymous", {}, {stmt});
 
 		f = generateFunctionPrototype(func);
 		if (f == nullptr)
@@ -723,8 +730,11 @@ int LLVMBackend::executeTopLevelItem(const ASTBase & top_level_item)
 		if (f == nullptr)
 			return 1;
 
+		fprintf(stderr, "running function\n");
 		Engine->runFunction(f, {});
+		fprintf(stderr, "ran!\n");
 	} else {
+		fprintf(stderr, "comp func\n");
 		f = generateFunctionPrototype(*func);
 		if (f == nullptr)
 			return 1;

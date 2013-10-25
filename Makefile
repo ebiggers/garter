@@ -10,6 +10,7 @@ CPPFLAGS := $(LLVM_CPPFLAGS) -I.
 LDFLAGS := $(LLVM_LDFLAGS)
 LDLIBS := $(LLVM_LDLIBS) -lpthread -ldl
 COMPILER_EXE := garterc
+INTERPRETER_EXE := garteri
 
 FRONTEND_SRC := $(wildcard frontend/*.cc)
 FRONTEND_OBJ := $(FRONTEND_SRC:%.cc=%.o)
@@ -27,31 +28,29 @@ TEST_SRC := $(wildcard test/*.cc)
 TEST_OBJ := $(TEST_SRC:%.cc=%.o)
 TEST_EXE := $(TEST_SRC:%.cc=%)
 
-TOPLEVEL_SRC := $(wildcard *.cc)
-TOPLEVEL_OBJ := $(TOPLEVEL_SRC:%.cc=%.o)
+COMPILER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) garterc.o
+INTERPRETER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(RUNTIME_OBJ) garteri.o
 
-COMPILER_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(TOPLEVEL_OBJ)
-
-OBJ := $(COMPILER_OBJ) $(TEST_OBJ)
-
-DEP := $(OBJ:%.o=%.d)
-
-EXE := $(COMPILER_EXE) $(TEST_EXE)
+ALL_OBJ := $(FRONTEND_OBJ) $(BACKEND_OBJ) $(TEST_OBJ) garterc.o garteri.o
+ALL_DEP := $(ALL_OBJ:%.o=%.d)
+ALL_EXE := $(COMPILER_EXE) $(INTERPRETER_EXE) $(TEST_EXE)
 
 
-all:$(COMPILER_EXE) $(RUNTIME_OBJ)
+all:$(COMPILER_EXE) $(INTERPRETER_EXE) $(RUNTIME_OBJ)
 
--include $(DEP)
+-include $(ALL_DEP)
 
 $(COMPILER_EXE):$(COMPILER_OBJ)
 	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
-$(OBJ) $(RUNTIME_C_OBJ): %.o : %.cc
+$(INTERPRETER_EXE):$(INTERPRETER_OBJ)
+	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
+
+$(ALL_OBJ) $(RUNTIME_C_OBJ): %.o : %.cc
 	$(CXX) -o $@ -c $(CXXFLAGS) $(DEPFLAGS) $(CPPFLAGS) $<
 
-$(RUNTIME_GA_OBJ): %.o: %.ga garterc
+$(RUNTIME_GA_OBJ): %.o: %.ga $(COMPILER_EXE)
 	./garterc -c $<
-
 
 test:$(TEST_EXE)
 	for testprog in $(TEST_EXE); do		\
@@ -62,6 +61,6 @@ $(TEST_EXE): %:%.o $(FRONTEND_OBJ) $(BACKEND_OBJ)
 	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 clean:
-	rm -f $(EXE) $(OBJ) $(DEP) tags cscope*
+	rm -f $(ALL_EXE) $(ALL_OBJ) $(ALL_DEP) tags cscope*
 
 .PHONY: clean all test

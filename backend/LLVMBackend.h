@@ -19,7 +19,7 @@ class LLVMCodeGeneratorVisitor;
 class LLVMBackend : public Backend {
 
 	llvm::LLVMContext Ctx;
-	llvm::Module Mod;
+	llvm::Module *Mod;
 	llvm::IRBuilder<> Builder;
 	llvm::IntegerType *Int32Ty;
 	llvm::ExecutionEngine *Engine;
@@ -47,7 +47,7 @@ public:
 	{
 		return compileProgram(program, out_filename, false);
 	}
-	int executeTopLevelItem(const ASTBase & top_level_item);
+	int executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item);
 };
 
 } // End garter namespace

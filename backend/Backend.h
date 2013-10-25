@@ -13,7 +13,7 @@ public:
 
 	virtual int compileProgramToObjectFile(const ProgramAST & program,
 					       const char *out_filename) = 0;
-	virtual int executeTopLevelItem(const ASTBase & top_level_item) = 0;
+	virtual int executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item) = 0;
 };
 
 } // End garter namespace

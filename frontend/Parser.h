@@ -4,7 +4,7 @@
 #include <frontend/Lexer.h>
 #include <memory>
 #include <vector>
-#include <ostream>
+#include <iostream>
 
 namespace garter {
 
@@ -305,10 +305,8 @@ public:
 class Parser {
 private:
 	Lexer Lexer;
-	static const char * const Tag;
 	std::unique_ptr<Token> CurrentToken;
 	std::unique_ptr<Token> NextToken;
-	bool EndOfFileReached;
 
 	BinaryExpressionAST::BinaryOp		currentMultiplicationOperator();
 	BinaryExpressionAST::BinaryOp		currentAdditionOperator();
@@ -349,7 +347,12 @@ private:
 			NextToken = Lexer.getNextToken();
 	}
 public:
-	Parser(const char *string) : Lexer(string), EndOfFileReached(false)
+	Parser(const char *str) : Lexer(str)
+	{
+		nextToken();
+	}
+
+	Parser(std::istream & is) : Lexer(is)
 	{
 		nextToken();
 	}
@@ -359,8 +362,8 @@ public:
 	std::unique_ptr<ProgramAST> parseProgram();
 	std::unique_ptr<ASTBase>    parseTopLevelItem();
 
-	bool isEndOfFile() const {
-		return EndOfFileReached;
+	bool reachedEndOfFile() const {
+		return Lexer.reachedEndOfFile();
 	}
 };
 

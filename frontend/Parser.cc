@@ -4,8 +4,6 @@
 
 using namespace garter;
 
-const char * const Parser::Tag = "Parser";
-
 const char *BinaryExpressionAST::getOpStr() const
 {
 	switch (Op) {
@@ -1012,7 +1010,6 @@ Parser::parseTopLevelItem()
 	switch (CurrentToken->getType()) {
 	case Token::Error:
 	case Token::EndOfFile:
-		EndOfFileReached = true;
 		return nullptr;
 	case Token::Def:
 	case Token::Extern:
@@ -1035,7 +1032,7 @@ Parser::parseProgram()
 
 		if (ast != nullptr)
 			top_level_items.push_back(std::move(ast));
-		else if (isEndOfFile())
+		else if (reachedEndOfFile())
 			break;
 		else
 			return nullptr;

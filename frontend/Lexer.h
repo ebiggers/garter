@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <assert.h>
+#include <istream>
 
 namespace garter {
 
@@ -97,19 +98,27 @@ private:
 
 class Lexer {
 private:
-	const char *NextCharPtr;
 	unsigned long CurrentLineNumber;
 	std::map<std::string, Token::TokenType> Keywords;
-
-	static const char * const Tag;
+	unsigned char CurrentChar;
+	std::istream *InputStream;
+	std::istringstream *StringStream;
 
 	std::unique_ptr<Token> lexNumber();
 	std::unique_ptr<Token> lexIdentifierOrKeyword();
+	void nextChar();
+
+	Lexer();
 
 public:
-	Lexer(const char *string);
+	Lexer(const char *str);
+	Lexer(std::istream & is);
+	~Lexer();
+
 	std::unique_ptr<Token> getNextToken();
 	void reportError(const char *msg, ...);
+
+	bool reachedEndOfFile() const { return InputStream->eof(); }
 };
 
 } // End garter namespace

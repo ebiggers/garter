@@ -2,10 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sstream>
 
 using namespace garter;
-
-const char * const Lexer::Tag = "Lexer";
 
 enum CharType {
 	LOWER_CASE = 0x01,
@@ -32,30 +31,29 @@ void Lexer::reportError(const char *format, ...)
 	va_end(va);
 }
 
+void Lexer::nextChar()
+{
+	CurrentChar = 0;
+	(*InputStream) >> CurrentChar;
+}
+
 std::unique_ptr<Token> Lexer::lexIdentifierOrKeyword()
 {
-	const char *start;
-	size_t len;
-
-	start = NextCharPtr;
-
+	std::string name;
 	do {
-		NextCharPtr++;
-	} while (CharTab[(uint8_t)*NextCharPtr] & (LOWER_CASE | UPPER_CASE |
-						   UNDERSCORE | NUMBER));
-	len = NextCharPtr - start;
-
-	char *name = new char[len + 1];
-	memcpy(name, start, len);
-	name[len] = '\0';
-
+		name.push_back(CurrentChar);
+		nextChar();
+	} while (CharTab[(uint8_t)CurrentChar] & (LOWER_CASE | UPPER_CASE |
+						  UNDERSCORE | NUMBER));
 	auto it_kw = Keywords.find(name);
 
 	if (it_kw != Keywords.end()) {
-		delete[] name;
 		return std::unique_ptr<Token>(new Token(it_kw->second));
 	} else {
-		return std::unique_ptr<Token>(new Token(Token::Identifier, name));
+		char *nameptr = new char[name.length() + 1];
+		memcpy(nameptr, name.c_str(), name.length() + 1);
+
+		return std::unique_ptr<Token>(new Token(Token::Identifier, nameptr));
 	}
 }
 
@@ -64,7 +62,7 @@ std::unique_ptr<Token> Lexer::lexNumber()
 	int32_t n = 0;
 
 	do {
-		int32_t next_digit = (*NextCharPtr - '0');
+		int32_t next_digit = (CurrentChar - '0');
 
 		if (n > INT32_MAX / 10)
 			goto too_large;
@@ -76,9 +74,9 @@ std::unique_ptr<Token> Lexer::lexNumber()
 
 		n += next_digit;
 
-		NextCharPtr++;
+		nextChar();
 
-	} while (*NextCharPtr >= '0' && *NextCharPtr <= '9');
+	} while (CurrentChar >= '0' && CurrentChar <= '9');
 
 	return std::unique_ptr<Token>(new Token(Token::Number, n));
 
@@ -90,7 +88,7 @@ too_large:
 std::unique_ptr<Token> Lexer::getNextToken()
 {
 next_char:
-	switch (*NextCharPtr) {
+	switch (CurrentChar) {
 	case '\n':
 		CurrentLineNumber++;
 		// Fall through
@@ -98,14 +96,14 @@ next_char:
 	case '\t':
 	case '\v':
 		// Skip whitespace character
-		NextCharPtr++;
+		nextChar();
 		goto next_char;
 
 	case '#':
 		// Skip comment
 		do {
-			NextCharPtr++;
-		} while (*NextCharPtr != '\n' && *NextCharPtr != '\0');
+			nextChar();
+		} while (CurrentChar != '\n' && CurrentChar != '\0');
 		goto next_char;
 
 	case 'a' ... 'z':
@@ -117,38 +115,38 @@ next_char:
 		return lexNumber();
 
 	case '(':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::LeftParenthesis));
 
 	case ')':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::RightParenthesis));
 
 	case ':':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Colon));
 
 	case ';':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Semicolon));
 
 	case ',':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Comma));
 
 	case '[':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::LeftSquareBracket));
 
 	case ']':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::RightSquareBracket));
 
 	case '=':
-		NextCharPtr++;
-		if (*NextCharPtr == '=') {
+		nextChar();
+		if (CurrentChar == '=') {
 			// Double equals (equality predicate)
-			NextCharPtr++;
+			nextChar();
 			return std::unique_ptr<Token>(new Token(Token::DoubleEquals));
 		} else {
 			// Equals (assignment)
@@ -157,17 +155,17 @@ next_char:
 		break;
 
 	case '+':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Plus));
 
 	case '-':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Minus));
 
 	case '*':
-		NextCharPtr++;
-		if (*NextCharPtr == '*') {
-			NextCharPtr++;
+		nextChar();
+		if (CurrentChar == '*') {
+			nextChar();
 			return std::unique_ptr<Token>(new Token(Token::DoubleAsterisk));
 		} else {
 			return std::unique_ptr<Token>(new Token(Token::Asterisk));
@@ -175,36 +173,36 @@ next_char:
 		break;
 
 	case '/':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::ForwardSlash));
 
 	case '%':
-		NextCharPtr++;
+		nextChar();
 		return std::unique_ptr<Token>(new Token(Token::Percent));
 
 	case '<':
-		NextCharPtr++;
-		if (*NextCharPtr == '=') {
-			NextCharPtr++;
+		nextChar();
+		if (CurrentChar == '=') {
+			nextChar();
 			return std::unique_ptr<Token>(new Token(Token::LessThanOrEqualTo));
 		} else {
 			return std::unique_ptr<Token>(new Token(Token::LessThan));
 		}
 
 	case '>':
-		NextCharPtr++;
-		if (*NextCharPtr == '=') {
-			NextCharPtr++;
+		nextChar();
+		if (CurrentChar == '=') {
+			nextChar();
 			return std::unique_ptr<Token>(new Token(Token::GreaterThanOrEqualTo));
 		} else {
 			return std::unique_ptr<Token>(new Token(Token::GreaterThan));
 		}
 
 	case '!':
-		NextCharPtr++;
-		if (*NextCharPtr == '=') {
+		nextChar();
+		if (CurrentChar == '=') {
 			// "Not equal to" symbol
-			NextCharPtr++;
+			nextChar();
 			return std::unique_ptr<Token>(new Token(Token::NotEqualTo));
 		} else {
 			// '!' followed by something else--- not valid
@@ -213,16 +211,25 @@ next_char:
 		}
 
 	case '\0':
-		// '\0' marks end of buffer
-		return std::unique_ptr<Token>(new Token(Token::EndOfFile));
+		if (InputStream->eof()) {
+			return std::unique_ptr<Token>(new Token(Token::EndOfFile));
+		} else {
+			reportError("error reading input");
+			return std::unique_ptr<Token>(new Token(Token::Error));
+		}
 
 	default:
-		reportError("unexpected character '%c'", *NextCharPtr);
+		reportError("unexpected character '%c'", CurrentChar);
 		return std::unique_ptr<Token>(new Token(Token::Error));
 	}
 }
 
-Lexer::Lexer(const char *string) : NextCharPtr(string), CurrentLineNumber(1)
+Lexer::Lexer()
+	: CurrentLineNumber(1),
+	  Keywords(),
+	  CurrentChar(0),
+	  InputStream(nullptr),
+	  StringStream(nullptr)
 {
 	Keywords.insert(std::make_pair("and", Token::And));
 	Keywords.insert(std::make_pair("def", Token::Def));
@@ -242,4 +249,24 @@ Lexer::Lexer(const char *string) : NextCharPtr(string), CurrentLineNumber(1)
 	Keywords.insert(std::make_pair("print", Token::Print));
 	Keywords.insert(std::make_pair("return", Token::Return));
 	Keywords.insert(std::make_pair("while", Token::While));
+}
+
+Lexer::Lexer(const char *str)
+	: Lexer()
+{
+	InputStream = StringStream = new std::istringstream(str, std::ios_base::in);
+	InputStream->unsetf(std::ios_base::skipws);
+	nextChar();
+}
+
+Lexer::Lexer(std::istream & is)
+	: Lexer()
+{
+	InputStream = &is;
+	nextChar();
+}
+
+Lexer::~Lexer()
+{
+	delete StringStream;
 }
