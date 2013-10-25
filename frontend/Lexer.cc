@@ -1,6 +1,7 @@
 #include "Lexer.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 using namespace garter;
 
@@ -19,6 +20,17 @@ static const uint8_t CharTab[256] = {
 	['_']         = UNDERSCORE,
 	['0' ... '9'] = NUMBER,
 };
+
+void Lexer::reportError(const char *format, ...)
+{
+	va_list va;
+
+	va_start(va, format);
+	fprintf(stderr, "Error near line %lu: ", CurrentLineNumber);
+	vfprintf(stderr, format, va);
+	putc('\n', stderr);
+	va_end(va);
+}
 
 std::unique_ptr<Token> Lexer::lexIdentifierOrKeyword()
 {
@@ -71,8 +83,7 @@ std::unique_ptr<Token> Lexer::lexNumber()
 	return std::unique_ptr<Token>(new Token(Token::Number, n));
 
 too_large:
-	fprintf(stderr, "%s: Integer constant on line %lu is "
-		"too large!\n", Tag, CurrentLineNumber);
+	reportError("integer constant too large");
 	return std::unique_ptr<Token>(new Token(Token::Error));
 }
 
@@ -197,9 +208,7 @@ next_char:
 			return std::unique_ptr<Token>(new Token(Token::NotEqualTo));
 		} else {
 			// '!' followed by something else--- not valid
-			fprintf(stderr, "%s: Unexpected character '%c' "
-				"after '!' on line %lu\n",
-				Tag, *NextCharPtr, CurrentLineNumber);
+			reportError("unexpected character '%c' after '!'");
 			return std::unique_ptr<Token>(new Token(Token::Error));
 		}
 
@@ -208,8 +217,7 @@ next_char:
 		return std::unique_ptr<Token>(new Token(Token::EndOfFile));
 
 	default:
-		fprintf(stderr, "%s: Unexpected character '%c' on line %lu\n",
-			Tag, *NextCharPtr, CurrentLineNumber);
+		reportError("unexpected character '%c'", *NextCharPtr);
 		return std::unique_ptr<Token>(new Token(Token::Error));
 	}
 }

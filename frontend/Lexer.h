@@ -108,6 +108,7 @@ private:
 public:
 	Lexer(const char *string);
 	std::unique_ptr<Token> getNextToken();
+	void reportError(const char *msg, ...);
 };
 
 } // End garter namespace

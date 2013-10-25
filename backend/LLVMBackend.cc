@@ -1,17 +1,39 @@
 #include <backend/LLVMBackend.h>
 #include <frontend/Parser.h>
+
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Type.h>
-#include <llvm/IR/Function.h>
+#include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/Host.h>
+#include <llvm/ExecutionEngine/JIT.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/PassManager.h>
 #include <iostream>
 
 using namespace garter;
 using namespace llvm;
 
+LLVMBackend::LLVMBackend()
+		: Ctx(),
+		  Mod("", Ctx),
+		  Builder(Ctx),
+		  Int32Ty(Builder.getInt32Ty()),
+		  Engine(nullptr)
+{
+}
+
+LLVMBackend::~LLVMBackend()
+{
+	delete Engine;
+}
+
 // Given the AST node for a function definition, create and return the
 // llvm::Function corresponding to the function prototype.  Returns nullptr if
 // an identically-named function was already defined.
-Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & func)
+Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & func,
+						 Function::LinkageTypes linkage)
 {
 	// Get function type
 	FunctionType *funcTy;
@@ -21,12 +43,11 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 	}
 
 	// Create the function
-	Function *f = Function::Create(funcTy, Function::ExternalLinkage,
-				       func.Name, &Mod);
+	Function *f = Function::Create(funcTy, linkage, func.Name, &Mod);
 
 	// Check for multiple definition
 	if (f->getName() != func.Name) {
-		std::cerr << "ERROR: Multiple definitions of "
+		std::cerr << "LLVMBackend: ERROR: Multiple definitions of "
 			  << func.Name << std::endl;
 		return nullptr;
 	}
@@ -59,6 +80,7 @@ private:
 
 	// Used to return the LLVM IR value generated from an expression
 	Value *ExpressionValue;
+	Value *ExpressionPointer;
 
 	// Used to return whether LLVM IR was successfully generated for a
 	// statement
@@ -222,6 +244,8 @@ void LLVMCodeGeneratorVisitor::visit(BinaryExpressionAST & expr)
 		assert(0);
 		break;
 	}
+	if (ExpressionValue != nullptr)
+		ExpressionValue = Backend.Builder.CreateZExt(ExpressionValue, Backend.Int32Ty);
 }
 
 // Generate LLVM IR in the current function for a function call.  The resulting
@@ -233,7 +257,7 @@ void LLVMCodeGeneratorVisitor::visit(CallExpressionAST & expr)
 
 	// Make sure the called function is actually declared
 	if (callee == nullptr) {
-		std::cerr << "ERROR: Unknown function "
+		std::cerr << "LLVMBackend: ERROR: Unknown function "
 			  << expr.Callee << std::endl;
 		ExpressionValue = nullptr;
 		return;
@@ -241,7 +265,7 @@ void LLVMCodeGeneratorVisitor::visit(CallExpressionAST & expr)
 
 	// Make sure the function is called with the correct number of arguments
 	if (callee->arg_size() != expr.Arguments.size()) {
-		std::cerr << "ERROR: Wrong number of arguments to "
+		std::cerr << "LLVMBackend: ERROR: Wrong number of arguments to "
 			  << expr.Callee << std::endl;
 		ExpressionValue = nullptr;
 		return;
@@ -286,7 +310,9 @@ void LLVMCodeGeneratorVisitor::visit(UnaryExpressionAST & expr)
 		return;
 	case UnaryExpressionAST::Not:
 		// unary not:  0 -> 1, nonzero -> 0
-		ExpressionValue = isZero(ExpressionValue);
+		ExpressionValue =
+			Backend.Builder.CreateZExt(isZero(ExpressionValue),
+						   Backend.Int32Ty);
 		break;
 	}
 }
@@ -296,16 +322,23 @@ void LLVMCodeGeneratorVisitor::visit(UnaryExpressionAST & expr)
 // this->ExpressionValue.
 void LLVMCodeGeneratorVisitor::visit(VariableExpressionAST & expr)
 {
-	Value *var_value = NamedValues[expr.Name];
-	if (var_value == nullptr) {
+	Value *var_ptr = NamedValues[expr.Name];
+	Value *var_value;
+	if (var_ptr == nullptr) {
+		Value *zero = Backend.Builder.getInt32(0);
+
 		// Variable didn't already exist in the current function; create it.
-		ExpressionValue = Backend.Builder.CreateAlloca(Backend.Int32Ty,
-							       0, expr.Name);
-		NamedValues[expr.Name] = ExpressionValue;
+		var_ptr = Backend.Builder.CreateAlloca(Backend.Int32Ty,
+						       0, expr.Name);
+		NamedValues[expr.Name] = var_ptr;
+		Backend.Builder.CreateStore(zero, var_ptr);
+		var_value = zero;
 	} else {
 		// Variable already existed in the current function.
-		ExpressionValue = var_value;
+		var_value = Backend.Builder.CreateLoad(var_ptr);
 	}
+	ExpressionValue = var_value;
+	ExpressionPointer = var_ptr;
 }
 
 // Generate LLVM IR in the current function for an assignment statement.
@@ -316,7 +349,7 @@ void LLVMCodeGeneratorVisitor::visit(AssignmentStatementAST & stmt)
 	stmt.Variable->acceptVisitor(*this);
 	if (ExpressionValue == nullptr)
 		return;
-	Value *var_ptr = ExpressionValue;
+	Value *var_ptr = ExpressionPointer;
 
 	stmt.Expression->acceptVisitor(*this);
 	if (ExpressionValue == nullptr)
@@ -416,8 +449,7 @@ void LLVMCodeGeneratorVisitor::visit(PrintStatementAST & stmt)
 
 	// Retrieve print function (in runtime library)
 	FunctionType *funcTy = FunctionType::get(Backend.Int32Ty, Backend.Int32Ty, true);
-	Function *print = Function::Create(funcTy, Function::ExternalLinkage,
-					   "__garter_print", &Backend.Mod);
+	Constant *print = Backend.Mod.getOrInsertFunction("__garter_print", funcTy);
 	assert(print != nullptr);
 
 	// Build a vector of llvm::Value pointers representing the function
@@ -445,6 +477,10 @@ void LLVMCodeGeneratorVisitor::visit(ReturnStatementAST & stmt)
 		return;
 
 	Backend.Builder.CreateRet(ExpressionValue);
+
+
+	BasicBlock *newbb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
+	Backend.Builder.SetInsertPoint(newbb);
 
 	StatementSuccessful = true;
 }
@@ -529,25 +565,28 @@ Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & fu
 		if (!gen.getStatementSuccessful())
 			return nullptr;
 	}
+	Builder.CreateRet(Builder.getInt32(0));
+
+	assert (llvm::verifyFunction (*f));
 
 	return f;
 }
 
-int LLVMBackend::codeGen(const char *outfile)
+int LLVMBackend::generateProgramCode(const ProgramAST & program)
 {
 	// Generate prototypes for all functions
-	for (auto itemptr : AST->TopLevelItems) {
+	for (auto itemptr : program.TopLevelItems) {
 		auto func = std::dynamic_pointer_cast<FunctionDefinitionAST>(itemptr);
 		if (func == nullptr)
 			continue;
 
-		if (nullptr == generateFunctionPrototype(*func))
+		if (nullptr == generateFunctionPrototype(*func, Function::InternalLinkage))
 			return 1;
 	}
 
 	// Treat toplevel statements as anonymous function
 	std::vector<std::shared_ptr<StatementAST>> main_body;
-	for (auto itemptr : AST->TopLevelItems) {
+	for (auto itemptr : program.TopLevelItems) {
 		auto stmt = std::dynamic_pointer_cast<StatementAST>(itemptr);
 		if (stmt == nullptr)
 			continue;
@@ -557,12 +596,12 @@ int LLVMBackend::codeGen(const char *outfile)
 	std::unique_ptr<FunctionDefinitionAST> main_ast (
 		new FunctionDefinitionAST("__garter_main", std::vector<std::string>(),
 					  main_body));
-	if (nullptr == generateFunctionPrototype(*main_ast))
+	if (nullptr == generateFunctionPrototype(*main_ast, Function::ExternalLinkage))
 		return 1;
 
 	// Generate code for all functions, plus the anonymous function
 	// containing the toplevel statements
-	for (auto itemptr : AST->TopLevelItems) {
+	for (auto itemptr : program.TopLevelItems) {
 		auto func = std::dynamic_pointer_cast<FunctionDefinitionAST>(itemptr);
 		if (func == nullptr)
 			continue;
@@ -573,5 +612,106 @@ int LLVMBackend::codeGen(const char *outfile)
 	if (nullptr == generateFunctionBodyCode(*main_ast))
 		return 1;
 
-	return 1;
+	return 0;
+}
+
+int LLVMBackend::compileProgram(const ProgramAST & program,
+				const char *out_filename, bool obj_output)
+{
+	int ret = generateProgramCode(program);
+	if (ret)
+		return ret;
+
+	std::string err_str;
+
+	/* XXX: llvm::sys::fs::F_Binary flag should be used to open the output
+	 * file, but it was not available in LLVM version being tested.  */
+	tool_output_file os(out_filename, err_str);
+	if (err_str.length() != 0) {
+		std::cerr << "LLVMBackend: " << err_str << std::endl;
+		return 1;
+	}
+
+	if (obj_output) {
+		std::string err_str;
+		std::string triple;
+		std::string cpu;
+		std::string features;
+		TargetOptions options;
+		const Target *target;
+		std::unique_ptr<TargetMachine> mach;
+		PassManager mgr;
+		formatted_raw_ostream out(os.os());
+		
+		llvm::InitializeAllTargets();
+		llvm::InitializeAllTargetMCs();
+		llvm::InitializeAllAsmPrinters();
+
+		triple = sys::getDefaultTargetTriple();
+		cpu = sys::getHostCPUName();
+
+		target = TargetRegistry::lookupTarget(triple, err_str);
+		if (target == nullptr) {
+			std::cerr << "LLVMBackend: " << err_str << std::endl;
+			return 1;
+		}
+
+		mach.reset(target->createTargetMachine(triple, cpu, features, options));
+		if (mach == nullptr) {
+			std::cerr << "LLVMBackend: couldn't create TargetMachine" << std::endl;
+			return 1;
+		}
+
+		if (mach->addPassesToEmitFile(mgr, out,
+					      TargetMachine::CGFT_ObjectFile,
+					      false))
+		{
+			std::cerr << "LLVMBackend: couldn't add passes "
+				"to create object file" << std::endl;
+			return 1;
+		}
+		mgr.run(Mod);
+	} else {
+		Mod.print(os.os(), nullptr);
+	}
+
+	os.keep();
+
+	return 0;
+}
+
+int LLVMBackend::executeTopLevelItem(const ASTBase & top_level_item)
+{
+	const FunctionDefinitionAST * func =
+		dynamic_cast<const FunctionDefinitionAST *>(&top_level_item);
+	const StatementAST * stmt =
+		dynamic_cast<const StatementAST *>(&top_level_item);
+	Function *f;
+
+	if (stmt) {
+		if (Engine == nullptr) {
+			llvm::InitializeNativeTarget();
+			Engine = EngineBuilder(&Mod).create();
+		}
+		std::shared_ptr<StatementAST> stmtptr(const_cast<StatementAST*>(stmt));
+		FunctionDefinitionAST func("", {}, {stmtptr});
+
+		f = generateFunctionPrototype(func, Function::InternalLinkage);
+		if (f == nullptr)
+			return 1;
+		f = generateFunctionBodyCode(func);
+		if (f == nullptr)
+			return 1;
+
+		Engine->runFunction(f, {});
+	} else {
+		f = generateFunctionPrototype(*func, Function::InternalLinkage);
+		if (f == nullptr)
+			return 1;
+		f = generateFunctionBodyCode(*func);
+		if (f == nullptr)
+			return 1;
+	}
+
+	return 0;
 }

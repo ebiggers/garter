@@ -60,7 +60,7 @@ static void doParserTest(const std::string & src_file_path,
 
 	Parser parser(src_buffer->getBufferStart());
 
-	std::unique_ptr<ProgramAST> ast(parser.buildAST());
+	std::unique_ptr<ProgramAST> ast(parser.parseProgram());
 
 	if (ast == nullptr) {
 		std::cerr << "TestParser ERROR: \""

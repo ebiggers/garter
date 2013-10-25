@@ -306,6 +306,7 @@ private:
 	static const char * const Tag;
 	std::unique_ptr<Token> CurrentToken;
 	std::unique_ptr<Token> NextToken;
+	bool EndOfFileReached;
 
 	BinaryExpressionAST::BinaryOp		currentMultiplicationOperator();
 	BinaryExpressionAST::BinaryOp		currentAdditionOperator();
@@ -332,8 +333,6 @@ private:
 	std::unique_ptr<WhileStatementAST>      parseWhileStatement();
 	std::unique_ptr<StatementAST>           parseStatement();
 
-	void parseError(const char *format, ...);
-
 	void nextToken()
 	{
 		if (NextToken)
@@ -348,14 +347,19 @@ private:
 			NextToken = Lexer.getNextToken();
 	}
 public:
-	Parser(const char *string) : Lexer(string)
+	Parser(const char *string) : Lexer(string), EndOfFileReached(false)
 	{
 		nextToken();
 	}
 
 	~Parser() { }
 
-	std::unique_ptr<ProgramAST> buildAST();
+	std::unique_ptr<ProgramAST> parseProgram();
+	std::unique_ptr<ASTBase>    parseTopLevelItem();
+
+	bool isEndOfFile() const {
+		return EndOfFileReached;
+	}
 };
 
 } // End garter namespace

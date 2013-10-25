@@ -6,16 +6,6 @@ using namespace garter;
 
 const char * const Parser::Tag = "Parser";
 
-void Parser::parseError(const char *format, ...)
-{
-	va_list va;
-
-	va_start(va, format);
-	fprintf(stderr, "%s: ", Tag);
-	vfprintf(stderr, format, va);
-	va_end(va);
-}
-
 const char *BinaryExpressionAST::getOpStr() const
 {
 	switch (Op) {
@@ -324,7 +314,7 @@ Parser::parseIdentifierExpression()
 			} else if (CurrentToken->getType() == Token::RightParenthesis) {
 				break;
 			} else {
-				parseError("Expected ',' or ')' in function call\n");
+				Lexer.reportError("expected ',' or ')' in function call");
 				return nullptr;
 			}
 		}
@@ -350,7 +340,7 @@ Parser::parseParenthesizedExpression()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::RightParenthesis) {
-		parseError("Expected ')'\n");
+		Lexer.reportError("expected ')'");
 		return nullptr;
 	}
 	nextToken();
@@ -375,12 +365,12 @@ Parser::parsePrimaryExpression()
 	case Token::LeftParenthesis:
 		return parseParenthesizedExpression();
 	case Token::EndOfFile:
-		parseError("Unexpected end of file\n");
+		Lexer.reportError("unexpected end of file");
 		return nullptr;
 	case Token::Error:
 		return nullptr;
 	default:
-		parseError("Expected start of primary expression\n");
+		Lexer.reportError("expected start of primary expression");
 		return nullptr;
 	}
 }
@@ -648,14 +638,14 @@ Parser::parseFunctionDefinition()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Identifier) {
-		parseError("Expected identifier (function name) after 'def'\n");
+		Lexer.reportError("expected identifier (function name) after 'def'");
 		return nullptr;
 	}
 	name = CurrentToken->getName();
 	nextToken();
 
 	if (CurrentToken->getType() != Token::LeftParenthesis) {
-		parseError("Expected '('\n");
+		Lexer.reportError("expected '('");
 		return nullptr;
 	}
 	nextToken();
@@ -663,8 +653,8 @@ Parser::parseFunctionDefinition()
 	if (CurrentToken->getType() != Token::RightParenthesis) {
 		for (;;) {
 			if (CurrentToken->getType() != Token::Identifier) {
-				parseError("Expected identifier (named parameter) "
-					   "in function prototype\n");
+				Lexer.reportError("expected identifier (named parameter) "
+						  "in function prototype");
 				return nullptr;
 			}
 
@@ -676,7 +666,7 @@ Parser::parseFunctionDefinition()
 			} else if (CurrentToken->getType() == Token::RightParenthesis) {
 				break;
 			} else {
-				parseError("Expected ',' or ')' in function prototype\n");
+				Lexer.reportError("expected ',' or ')' in function prototype");
 				return nullptr;
 			}
 		}
@@ -684,7 +674,7 @@ Parser::parseFunctionDefinition()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Colon) {
-		parseError("Expected ':'\n");
+		Lexer.reportError("expected ':'");
 		return nullptr;
 	}
 	nextToken();
@@ -722,7 +712,7 @@ Parser::parseAssignmentStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		parseError("Expected ';'\n");
+		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
 	nextToken();
@@ -744,7 +734,7 @@ Parser::parseExpressionStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		parseError("Expected ';'\n");
+		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -773,7 +763,7 @@ Parser::parseIfStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Colon) {
-		parseError("Expected ':'\n");
+		Lexer.reportError("expected ':'");
 		return nullptr;
 	}
 	nextToken();
@@ -800,7 +790,7 @@ Parser::parseIfStatement()
 			return nullptr;
 
 		if (CurrentToken->getType() != Token::Colon) {
-			parseError("Expected ':'\n");
+			Lexer.reportError("expected ':'");
 			return nullptr;
 		}
 
@@ -827,7 +817,7 @@ Parser::parseIfStatement()
 		nextToken();
 
 		if (CurrentToken->getType() != Token::Colon) {
-			parseError("Expected ':'\n");
+			Lexer.reportError("expected ':'");
 			return nullptr;
 		}
 
@@ -857,7 +847,7 @@ Parser::parsePassStatement()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		parseError("Expected ';'\n");
+		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -892,7 +882,7 @@ Parser::parsePrintStatement()
 			} else if (CurrentToken->getType() == Token::Semicolon) {
 				break;
 			} else {
-				parseError("Expected ';' or ','\n");
+				Lexer.reportError("expected ';' or ','");
 				return nullptr;
 			}
 		}
@@ -920,7 +910,7 @@ Parser::parseReturnStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		parseError("Expected ';'\n");
+		Lexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -943,7 +933,7 @@ Parser::parseWhileStatement()
 	std::unique_ptr<ExpressionAST> condition = parseExpression();
 
 	if (CurrentToken->getType() != Token::Colon) {
-		parseError("Expected ':'\n");
+		Lexer.reportError("expected ':'");
 		return nullptr;
 	}
 
@@ -998,37 +988,42 @@ Parser::parseStatement()
 	}
 }
 
-/* <program> ::=
- *	<toplevel_item>*
- *
- * <toplevel_item> ::=
+/* <toplevel_item> ::=
  *	<stmt>
  *	| <funcdef>
  */
+std::unique_ptr<ASTBase>
+Parser::parseTopLevelItem()
+{
+	switch (CurrentToken->getType()) {
+	case Token::Error:
+	case Token::EndOfFile:
+		EndOfFileReached = true;
+		return nullptr;
+	case Token::Def:
+		return parseFunctionDefinition();
+	default:
+		return parseStatement();
+	}
+}
+
+/* <program> ::=
+ *	<toplevel_item>*
+ */
 std::unique_ptr<ProgramAST>
-Parser::buildAST()
+Parser::parseProgram()
 {
 	std::vector<std::shared_ptr<ASTBase>> top_level_items;
 
-	while (CurrentToken->getType() != Token::EndOfFile) {
+	for (;;) {
+		std::unique_ptr<ASTBase> ast = parseTopLevelItem();
 
-		std::unique_ptr<ASTBase> ast;
-
-		switch (CurrentToken->getType()) {
-		case Token::Error:
-			ast = nullptr;
+		if (ast != nullptr)
+			top_level_items.push_back(std::move(ast));
+		else if (isEndOfFile())
 			break;
-		case Token::Def:
-			ast = parseFunctionDefinition();
-			break;
-		default:
-			ast = parseStatement();
-			break;
-		}
-		if (ast == nullptr)
+		else
 			return nullptr;
-		top_level_items.push_back(std::move(ast));
 	}
-
 	return std::unique_ptr<ProgramAST>(new ProgramAST(top_level_items));
 }

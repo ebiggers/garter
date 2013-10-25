@@ -6,20 +6,14 @@
 namespace garter {
 
 class ProgramAST;
+class ASTBase;
 
 class Backend {
-protected:
-	std::shared_ptr<ProgramAST> AST;
-	const char *ModuleName;
-
 public:
-	Backend(std::shared_ptr<ProgramAST> ast,
-		const char *module_name)
-		: AST(ast), ModuleName(module_name)
-	{
-	}
 
-	virtual int codeGen(const char *outfile) = 0;
+	virtual int compileProgramToObjectFile(const ProgramAST & program,
+					       const char *out_filename) = 0;
+	virtual int executeTopLevelItem(const ASTBase & top_level_item) = 0;
 };
 
 } // End garter namespace
