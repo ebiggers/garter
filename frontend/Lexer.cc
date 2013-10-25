@@ -224,13 +224,12 @@ next_char:
 	}
 }
 
-Lexer::Lexer()
-	: CurrentLineNumber(1),
-	  Keywords(),
-	  CurrentChar(0),
-	  InputStream(nullptr),
-	  StringStream(nullptr)
+void Lexer::init()
 {
+	CurrentLineNumber = 1;
+	CurrentChar = 0;
+	InputStream->unsetf(std::ios_base::skipws);
+
 	Keywords.insert(std::make_pair("and", Token::And));
 	Keywords.insert(std::make_pair("def", Token::Def));
 	Keywords.insert(std::make_pair("else", Token::Else));
@@ -249,21 +248,22 @@ Lexer::Lexer()
 	Keywords.insert(std::make_pair("print", Token::Print));
 	Keywords.insert(std::make_pair("return", Token::Return));
 	Keywords.insert(std::make_pair("while", Token::While));
+
+	nextChar();
 }
 
 Lexer::Lexer(const char *str)
-	: Lexer()
 {
-	InputStream = StringStream = new std::istringstream(str, std::ios_base::in);
-	InputStream->unsetf(std::ios_base::skipws);
-	nextChar();
+	StringStream = new std::istringstream(str, std::ios_base::in);
+	InputStream = StringStream;
+	init();
 }
 
 Lexer::Lexer(std::istream & is)
-	: Lexer()
 {
+	StringStream = nullptr;
 	InputStream = &is;
-	nextChar();
+	init();
 }
 
 Lexer::~Lexer()

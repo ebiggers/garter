@@ -23,9 +23,11 @@ class LLVMBackend : public Backend {
 	llvm::IRBuilder<> Builder;
 	llvm::IntegerType *Int32Ty;
 	llvm::ExecutionEngine *Engine;
+	unsigned long StatementNumber;
 
 	llvm::Function *generateFunctionPrototype(const FunctionDefinitionAST & func);
-	llvm::Function *generateFunctionBodyCode(const FunctionDefinitionAST & func);
+	llvm::Function *generateFunctionBodyCode(const FunctionDefinitionAST & func,
+						 bool toplevel = false);
 	int generateProgramCode(const ProgramAST & program);
 	int compileProgram(const ProgramAST & program,
 			   const char *out_filename, bool obj_output);

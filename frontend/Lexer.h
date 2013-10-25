@@ -108,7 +108,7 @@ private:
 	std::unique_ptr<Token> lexIdentifierOrKeyword();
 	void nextChar();
 
-	Lexer();
+	void init();
 
 public:
 	Lexer(const char *str);

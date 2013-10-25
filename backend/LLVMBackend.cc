@@ -15,12 +15,15 @@
 using namespace garter;
 using namespace llvm;
 
+extern "C" int32_t __garter_print(int32_t, ...);
+
 LLVMBackend::LLVMBackend()
 		: Ctx(),
 		  Mod(new Module("", Ctx)),
 		  Builder(Ctx),
 		  Int32Ty(Builder.getInt32Ty()),
-		  Engine(nullptr)
+		  Engine(nullptr),
+		  StatementNumber(1)
 {
 }
 
@@ -55,7 +58,6 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 		linkage = Function::InternalLinkage;
 	}
 	Function *f = Function::Create(funcTy, linkage, func.Name, Mod);
-	fprintf(stderr, "created %p\n", f);
 
 	assert(f != nullptr);
 
@@ -75,7 +77,6 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 			argptr->setName(func.Parameters[i]);
 		}
 	}
-	fprintf(stderr, "return %p\n", f);
 	return f;
 }
 
@@ -89,6 +90,10 @@ private:
 
 	// Current function for which IR is being generated
 	Function * CurrentFunction;
+
+	// True if actually generating code for a toplevel statement or
+	// statements (CurrentFunction then refers to an anonymous function)
+	bool AtTopLevel;
 
 	// Mapping from variable names to LLVM IR values in this function
 	std::map<std::string, Value*> & NamedValues;
@@ -106,9 +111,11 @@ private:
 	Value *isNotZero(Value *val);
 public:
 	LLVMCodeGeneratorVisitor(LLVMBackend & backend, Function * f,
-				 std::map<std::string, Value*> & named_values)
+				 std::map<std::string, Value*> & named_values,
+				 bool toplevel)
 		: Backend(backend), CurrentFunction(f),
-		  NamedValues(named_values), ExpressionValue(nullptr)
+		  AtTopLevel(toplevel), NamedValues(named_values),
+		  ExpressionValue(nullptr)
 	{ }
 
 	void visit(AssignmentStatementAST &);
@@ -348,8 +355,23 @@ void LLVMCodeGeneratorVisitor::visit(UnaryExpressionAST & expr)
 // this->ExpressionValue.
 void LLVMCodeGeneratorVisitor::visit(VariableExpressionAST & expr)
 {
-	Value *var_ptr = NamedValues[expr.Name];
-	Value *var_value;
+	Value *var_ptr, *var_value;
+	if (AtTopLevel) {
+		var_ptr = Backend.Mod->getGlobalVariable(expr.Name, true);
+		Constant *zero = Backend.Builder.getInt32(0);
+		if (var_ptr == nullptr) {
+			var_ptr = new GlobalVariable(*Backend.Mod,
+						     Backend.Int32Ty,
+						     false,
+						     GlobalValue::InternalLinkage,
+						     zero,
+						     expr.Name);
+		}
+		assert(var_ptr != nullptr);
+	} else {
+		var_ptr = NamedValues[expr.Name];
+	}
+
 	if (var_ptr == nullptr) {
 		Value *zero = Backend.Builder.getInt32(0);
 
@@ -561,7 +583,8 @@ void LLVMCodeGeneratorVisitor::visit(WhileStatementAST & stmt)
 // current module.
 //
 // Returns nullptr on failure; otherwise the llvm::Function pointer
-Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & func)
+Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & func,
+						bool toplevel)
 {
 	Function * f = Mod->getFunction(func.Name);
 
@@ -586,7 +609,7 @@ Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & fu
 	}
 
 	// Generate IR for function body statements
-	LLVMCodeGeneratorVisitor gen(*this, f, named_values);
+	LLVMCodeGeneratorVisitor gen(*this, f, named_values, toplevel);
 	for (auto stmtptr : func.Body) {
 		stmtptr->acceptVisitor(gen);
 		if (!gen.getStatementSuccessful())
@@ -635,7 +658,7 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 		if (nullptr == generateFunctionBodyCode(*func))
 			return 1;
 	}
-	if (nullptr == generateFunctionBodyCode(*main_ast))
+	if (nullptr == generateFunctionBodyCode(*main_ast, true))
 		return 1;
 
 	return 0;
@@ -714,27 +737,31 @@ int LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
 		std::dynamic_pointer_cast<StatementAST>(top_level_item);
 	Function *f;
 
-	fprintf(stderr, "exec %p\n", top_level_item.get());
 	if (stmt) {
 		if (Engine == nullptr) {
 			llvm::InitializeNativeTarget();
 			Engine = EngineBuilder(Mod).create();
+
+
+			FunctionType *funcTy = FunctionType::get(Int32Ty, Int32Ty, true);
+			Constant *print = Mod->getOrInsertFunction("__garter_print", funcTy);
+			Engine->addGlobalMapping(static_cast<GlobalValue*>(print),
+						 (void*)__garter_print);
 		}
-		fprintf(stderr, "comp stmt\n");
-		FunctionDefinitionAST func("__garter_anonymous", {}, {stmt});
+		char buf[50];
+		sprintf(buf, "__garter_anonymous%lu", StatementNumber++);
+		FunctionDefinitionAST func(std::string(buf), {}, {stmt});
 
 		f = generateFunctionPrototype(func);
 		if (f == nullptr)
 			return 1;
-		f = generateFunctionBodyCode(func);
+		f = generateFunctionBodyCode(func, true);
 		if (f == nullptr)
 			return 1;
 
-		fprintf(stderr, "running function\n");
 		Engine->runFunction(f, {});
-		fprintf(stderr, "ran!\n");
+		f->eraseFromParent();
 	} else {
-		fprintf(stderr, "comp func\n");
 		f = generateFunctionPrototype(*func);
 		if (f == nullptr)
 			return 1;

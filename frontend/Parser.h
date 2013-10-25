@@ -362,9 +362,7 @@ public:
 	std::unique_ptr<ProgramAST> parseProgram();
 	std::unique_ptr<ASTBase>    parseTopLevelItem();
 
-	bool reachedEndOfFile() const {
-		return Lexer.reachedEndOfFile();
-	}
+	bool reachedEndOfFile() const { return Lexer.reachedEndOfFile(); }
 };
 
 } // End garter namespace
