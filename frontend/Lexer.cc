@@ -232,6 +232,7 @@ Lexer::Lexer(const char *string) : NextCharPtr(string), CurrentLineNumber(1)
 	Keywords.insert(std::make_pair("endfor", Token::EndFor));
 	Keywords.insert(std::make_pair("endif", Token::EndIf));
 	Keywords.insert(std::make_pair("endwhile", Token::EndWhile));
+	Keywords.insert(std::make_pair("extern", Token::Extern));
 	Keywords.insert(std::make_pair("for", Token::For));
 	Keywords.insert(std::make_pair("if", Token::If));
 	Keywords.insert(std::make_pair("in", Token::In));

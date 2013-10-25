@@ -39,11 +39,13 @@ public:
 	std::string Name;
 	std::vector<std::string> Parameters;
 	std::vector<std::shared_ptr<StatementAST>> Body;
+	bool IsExtern;
 
 	FunctionDefinitionAST(const std::string & name,
 			      const std::vector<std::string> & parameters,
-			      const std::vector<std::shared_ptr<StatementAST>> & body)
-		: Name(name), Parameters(parameters), Body(body)
+			      const std::vector<std::shared_ptr<StatementAST>> & body,
+			      bool is_extern = false)
+		: Name(name), Parameters(parameters), Body(body), IsExtern(is_extern)
 	{
 	}
 

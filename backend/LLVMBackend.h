@@ -24,8 +24,7 @@ class LLVMBackend : public Backend {
 	llvm::IntegerType *Int32Ty;
 	llvm::ExecutionEngine *Engine;
 
-	llvm::Function *generateFunctionPrototype(const FunctionDefinitionAST & func,
-						  llvm::Function::LinkageTypes linkage);
+	llvm::Function *generateFunctionPrototype(const FunctionDefinitionAST & func);
 	llvm::Function *generateFunctionBodyCode(const FunctionDefinitionAST & func);
 	int generateProgramCode(const ProgramAST & program);
 	int compileProgram(const ProgramAST & program,

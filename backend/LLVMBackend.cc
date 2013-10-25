@@ -32,8 +32,7 @@ LLVMBackend::~LLVMBackend()
 // Given the AST node for a function definition, create and return the
 // llvm::Function corresponding to the function prototype.  Returns nullptr if
 // an identically-named function was already defined.
-Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & func,
-						 Function::LinkageTypes linkage)
+Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & func)
 {
 	// Get function type
 	FunctionType *funcTy;
@@ -43,11 +42,20 @@ Function *LLVMBackend::generateFunctionPrototype(const FunctionDefinitionAST & f
 	}
 
 	// Create the function
+	Function::LinkageTypes linkage;
+	if (func.IsExtern) {
+		if (func.Body.size() == 0)
+			linkage = Function::ExternalWeakLinkage;
+		else
+			linkage = Function::ExternalLinkage;
+	} else {
+		linkage = Function::InternalLinkage;
+	}
 	Function *f = Function::Create(funcTy, linkage, func.Name, &Mod);
 
 	// Check for multiple definition
 	if (f->getName() != func.Name) {
-		std::cerr << "LLVMBackend: ERROR: Multiple definitions of "
+		std::cerr << "ERROR: Multiple definitions of "
 			  << func.Name << std::endl;
 		return nullptr;
 	}
@@ -232,8 +240,19 @@ void LLVMCodeGeneratorVisitor::visit(BinaryExpressionAST & expr)
 							     rhs_value);
 		break;
 	case BinaryExpressionAST::Exponentiate:
-		/* TODO */
-		assert(0);
+		{
+			std::vector<Type*> param_types(2, Backend.Int32Ty);
+			FunctionType *exp_type =
+				FunctionType::get(Backend.Int32Ty, param_types,
+						  false);
+			Constant * exp =
+				Backend.Mod.getOrInsertFunction("__garter_exponentiate",
+								exp_type);
+
+			ExpressionValue = Backend.Builder.CreateCall2(exp,
+								      lhs_value,
+								      rhs_value);
+		}
 		break;
 	case BinaryExpressionAST::In:
 		/* TODO */
@@ -257,7 +276,7 @@ void LLVMCodeGeneratorVisitor::visit(CallExpressionAST & expr)
 
 	// Make sure the called function is actually declared
 	if (callee == nullptr) {
-		std::cerr << "LLVMBackend: ERROR: Unknown function "
+		std::cerr << "ERROR: Unknown function "
 			  << expr.Callee << std::endl;
 		ExpressionValue = nullptr;
 		return;
@@ -265,7 +284,7 @@ void LLVMCodeGeneratorVisitor::visit(CallExpressionAST & expr)
 
 	// Make sure the function is called with the correct number of arguments
 	if (callee->arg_size() != expr.Arguments.size()) {
-		std::cerr << "LLVMBackend: ERROR: Wrong number of arguments to "
+		std::cerr << "ERROR: Wrong number of arguments to "
 			  << expr.Callee << std::endl;
 		ExpressionValue = nullptr;
 		return;
@@ -581,7 +600,7 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 		if (func == nullptr)
 			continue;
 
-		if (nullptr == generateFunctionPrototype(*func, Function::InternalLinkage))
+		if (nullptr == generateFunctionPrototype(*func))
 			return 1;
 	}
 
@@ -595,9 +614,9 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 	}
 
 	std::unique_ptr<FunctionDefinitionAST> main_ast (
-		new FunctionDefinitionAST("__garter_main", std::vector<std::string>(),
-					  main_body));
-	if (nullptr == generateFunctionPrototype(*main_ast, Function::ExternalLinkage))
+		new FunctionDefinitionAST("main", std::vector<std::string>(),
+					  main_body, true));
+	if (nullptr == generateFunctionPrototype(*main_ast))
 		return 1;
 
 	// Generate code for all functions, plus the anonymous function
@@ -629,7 +648,7 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 	 * file, but it was not available in LLVM version being tested.  */
 	tool_output_file os(out_filename, err_str);
 	if (err_str.length() != 0) {
-		std::cerr << "LLVMBackend: " << err_str << std::endl;
+		std::cerr << "ERROR: " << err_str << std::endl;
 		return 1;
 	}
 
@@ -653,13 +672,13 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 
 		target = TargetRegistry::lookupTarget(triple, err_str);
 		if (target == nullptr) {
-			std::cerr << "LLVMBackend: " << err_str << std::endl;
+			std::cerr << "ERROR: " << err_str << std::endl;
 			return 1;
 		}
 
 		mach.reset(target->createTargetMachine(triple, cpu, features, options));
 		if (mach == nullptr) {
-			std::cerr << "LLVMBackend: couldn't create TargetMachine" << std::endl;
+			std::cerr << "ERROR: couldn't create TargetMachine" << std::endl;
 			return 1;
 		}
 
@@ -667,7 +686,7 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 					      TargetMachine::CGFT_ObjectFile,
 					      false))
 		{
-			std::cerr << "LLVMBackend: couldn't add passes "
+			std::cerr << "ERROR: couldn't add passes "
 				"to create object file" << std::endl;
 			return 1;
 		}
@@ -697,7 +716,7 @@ int LLVMBackend::executeTopLevelItem(const ASTBase & top_level_item)
 		std::shared_ptr<StatementAST> stmtptr(const_cast<StatementAST*>(stmt));
 		FunctionDefinitionAST func("", {}, {stmtptr});
 
-		f = generateFunctionPrototype(func, Function::InternalLinkage);
+		f = generateFunctionPrototype(func);
 		if (f == nullptr)
 			return 1;
 		f = generateFunctionBodyCode(func);
@@ -706,7 +725,7 @@ int LLVMBackend::executeTopLevelItem(const ASTBase & top_level_item)
 
 		Engine->runFunction(f, {});
 	} else {
-		f = generateFunctionPrototype(*func, Function::InternalLinkage);
+		f = generateFunctionPrototype(*func);
 		if (f == nullptr)
 			return 1;
 		f = generateFunctionBodyCode(*func);

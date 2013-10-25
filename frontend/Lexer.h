@@ -27,6 +27,7 @@ public:
 		EndIf,
 		EndWhile,
 		Equals,
+		Extern,
 		For,
 		ForwardSlash,
 		GreaterThan,

@@ -625,7 +625,7 @@ Parser::parseExpression()
 }
 
 /* <funcdef> ::=
- *	def <identifier> \( (identifier (, identifier)*)? \) : <stmt>+  enddef
+ *	(extern)? def <identifier> \( (identifier (, identifier)*)? \) : <stmt>+  enddef
  */
 std::unique_ptr<FunctionDefinitionAST>
 Parser::parseFunctionDefinition()
@@ -633,8 +633,20 @@ Parser::parseFunctionDefinition()
 	std::string name;
 	std::vector<std::string> parameters;
 	std::vector<std::shared_ptr<StatementAST>> statements;
+	bool is_extern;
 
-	assert(CurrentToken->getType() == Token::Def);
+	if (CurrentToken->getType() == Token::Extern) {
+		is_extern = true;
+		nextToken();
+		if (CurrentToken->getType() != Token::Def) {
+			Lexer.reportError("expected 'def' after 'extern'");
+			return nullptr;
+		}
+	} else {
+		is_extern = false;
+		assert(CurrentToken->getType() == Token::Def);
+	}
+
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Identifier) {
@@ -689,7 +701,7 @@ Parser::parseFunctionDefinition()
 	nextToken();
 
 	return std::unique_ptr<FunctionDefinitionAST>(
-			new FunctionDefinitionAST(name, parameters, statements));
+			new FunctionDefinitionAST(name, parameters, statements, is_extern));
 }
 
 
@@ -1003,6 +1015,7 @@ Parser::parseTopLevelItem()
 		EndOfFileReached = true;
 		return nullptr;
 	case Token::Def:
+	case Token::Extern:
 		return parseFunctionDefinition();
 	default:
 		return parseStatement();
