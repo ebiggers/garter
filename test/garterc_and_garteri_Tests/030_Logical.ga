@@ -1,0 +1,12 @@
+def f(a, b, c):
+	return a or (b and not c);
+enddef
+
+print f(1, 0, 0);
+print f(5, 0, 0);
+print f(0, 0, 0);
+print f(0, 1, 1);
+print f(0, 1, 5);
+print f(0, 5, 1);
+print f(0, 1, 0);
+print f(0, 5, 0);

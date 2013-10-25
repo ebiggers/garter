@@ -8,6 +8,7 @@
 
 namespace garter {
 
+// Base class for all Abstract Syntax Tree (AST) nodes
 class ASTBase {
 public:
 	virtual ~ASTBase() { }
@@ -23,9 +24,13 @@ public:
 
 class StatementAST;
 
+// AST representing an entire program
 class ProgramAST : public ASTBase {
 public:
+	// Top-level items (function definitions and statements) making up the
+	// program
 	std::vector<std::shared_ptr<ASTBase>> TopLevelItems;
+
 	ProgramAST(const std::vector<std::shared_ptr<ASTBase>> &top_level_items)
 		: TopLevelItems(top_level_items)
 	{
@@ -34,6 +39,7 @@ public:
 	void print(std::ostream & os) const;
 };
 
+// AST representing a function definition
 class FunctionDefinitionAST : public ASTBase {
 public:
 	std::string Name;
@@ -60,6 +66,7 @@ class PrintStatementAST;
 class ReturnStatementAST;
 class WhileStatementAST;
 
+// Visitor interface for statement AST nodes
 class StatementASTVisitor {
 public:
 	virtual void visit(AssignmentStatementAST &) = 0;
@@ -72,6 +79,8 @@ public:
 };
 
 
+// AST node representing a statement (abstract class subclassed by the actual
+// statement types)
 class StatementAST : public ASTBase {
 public:
 	virtual void acceptVisitor(StatementASTVisitor & v) = 0;
@@ -80,6 +89,7 @@ public:
 class VariableExpressionAST;
 class ExpressionAST;
 
+// Statement representing an assignment to a variable
 class AssignmentStatementAST : public StatementAST {
 public:
 	std::shared_ptr<VariableExpressionAST> Variable;
@@ -95,6 +105,8 @@ public:
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a statement consisting only of an expression whose
+// value is ignored (for example a function call followed by a semicolon).
 class ExpressionStatementAST : public StatementAST {
 public:
 	std::shared_ptr<ExpressionAST> Expression;
@@ -107,6 +119,8 @@ public:
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing an 'if' statement, including the condition, body, any
+// optional 'elif' clauses, and an optional 'else' clause.
 class IfStatementAST : public StatementAST {
 public:
 	class ElifClause {
@@ -144,12 +158,16 @@ public:
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing an 'pass' statement, which does nothing.
 class PassStatementAST : public StatementAST {
 public:
 	void print(std::ostream & os) const;
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a 'print' statement, which prints values to standard
+// output.  (Note: this print *statement* potentially could be replaced with a
+// built-in print *function*, like  in Python 3.)
 class PrintStatementAST : public StatementAST {
 public:
 	std::vector<std::shared_ptr<ExpressionAST>> Arguments;
@@ -162,6 +180,8 @@ public:
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a 'return' statement, which returns a value from a
+// function.
 class ReturnStatementAST : public StatementAST {
 public:
 	std::shared_ptr<ExpressionAST> Expression;
@@ -174,6 +194,7 @@ public:
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a 'while' statement, including the condition and body.
 class WhileStatementAST : public StatementAST {
 public:
 	std::shared_ptr<ExpressionAST> Condition;
@@ -195,6 +216,7 @@ class NumberExpressionAST;
 class UnaryExpressionAST;
 class VariableExpressionAST;
 
+// Visitor interface for expression AST nodes
 class ExpressionASTVisitor {
 public:
 	virtual void visit(BinaryExpressionAST &) = 0;
@@ -204,11 +226,15 @@ public:
 	virtual void visit(VariableExpressionAST &) = 0;
 };
 
+// AST node representing an expression (abstract class subclassed by the actual
+// expression types)
 class ExpressionAST : public ASTBase {
 public:
 	virtual void acceptVisitor(ExpressionASTVisitor & v) = 0;
 };
 
+// AST node representing a binary operation performed on two sub-expressions,
+// referred to as the left-hand side (LHS) and the right-hand side (RHS)
 class BinaryExpressionAST : public ExpressionAST {
 public:
 	enum BinaryOp {
@@ -246,6 +272,7 @@ public:
 	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a function call
 class CallExpressionAST : public ExpressionAST {
 public:
 	std::string Callee;
@@ -260,6 +287,7 @@ public:
 	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a numeric literal
 class NumberExpressionAST : public ExpressionAST {
 public:
 	int32_t Number;
@@ -269,6 +297,7 @@ public:
 	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a unary expression
 class UnaryExpressionAST : public ExpressionAST {
 public:
 	enum UnaryOp {
@@ -290,6 +319,8 @@ public:
 	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
+// AST node representing a reference to a variable (doesn't include function
+// formal parameters)
 class VariableExpressionAST : public ExpressionAST {
 public:
 	std::string Name;
@@ -302,6 +333,12 @@ public:
 	void acceptVisitor(ExpressionASTVisitor & v) { v.visit(*this); }
 };
 
+// Parser for the garter language.  This class takes in a raw sequence of
+// characters making up a garter program and returns an abstract syntax tree
+// (AST) representing the program.  Internally, it uses the Lexer class to
+// turn the raw input into Tokens before attempting to parse the higher-level
+// expression, statement, and function definition constructs.  These
+// higher-level constructs are recognized using a recursive decent parser.
 class Parser {
 private:
 	Lexer Lexer;
@@ -347,15 +384,28 @@ private:
 			NextToken = Lexer.getNextToken();
 	}
 public:
+	// Create a Parser that reads a garter program from the specified
+	// null-terminated string.
 	Parser(const char *str) : Lexer(str) { }
 
+	// Create a Parser that reads a garter program from the specified input
+	// stream.
 	Parser(std::istream & is) : Lexer(is) { }
 
-	~Parser() { }
-
+	// Parse the input program and returns an abstract syntax tree
+	// representing it, or nullptr if the input is not a valid program.
 	std::unique_ptr<ProgramAST> parseProgram();
+
+	// Parse the next top-level item (function definition or statement) in
+	// the input program and returns an abstract syntax tree
+	// (FunctionDefinitionAST or StatementAST) representing it, or nullptr
+	// if the input is invalid or if the end of the input was reached.  The
+	// latter two cases can be distinguished by subsequently calling
+	// reachedEndOfFile().
 	std::unique_ptr<ASTBase>    parseTopLevelItem();
 
+	// Returns true iff the parser has attempted to read beyond the end of
+	// the input.
 	bool reachedEndOfFile() const { return Lexer.reachedEndOfFile(); }
 };
 

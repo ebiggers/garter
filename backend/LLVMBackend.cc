@@ -2,6 +2,7 @@
 #include <frontend/Parser.h>
 
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/FormattedStream.h>
@@ -166,7 +167,7 @@ Value *LLVMCodeGeneratorVisitor::isZeroOrNotZero(Value *val, bool is_zero)
 	Value *zero, *cmpresult;
 	Value *zeroresult, *nonzeroresult;
 	PHINode *phi;
-	
+
 	zerobb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
 	nonzerobb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
 	contbb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
@@ -641,7 +642,7 @@ Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & fu
 	return f;
 }
 
-int LLVMBackend::generateProgramCode(const ProgramAST & program)
+bool LLVMBackend::generateProgramCode(const ProgramAST & program)
 {
 	// Generate prototypes for all functions
 	for (auto itemptr : program.TopLevelItems) {
@@ -650,7 +651,7 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 			continue;
 
 		if (nullptr == generateFunctionPrototype(*func))
-			return 1;
+			return false;
 	}
 
 	// Treat toplevel statements as anonymous function
@@ -665,7 +666,7 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 	std::unique_ptr<FunctionDefinitionAST> main_ast (
 		new FunctionDefinitionAST("main", {}, main_body, true));
 	if (nullptr == generateFunctionPrototype(*main_ast))
-		return 1;
+		return false;
 
 	// Generate code for all functions, plus the anonymous function
 	// containing the toplevel statements
@@ -675,20 +676,19 @@ int LLVMBackend::generateProgramCode(const ProgramAST & program)
 			continue;
 
 		if (nullptr == generateFunctionBodyCode(*func))
-			return 1;
+			return false;
 	}
 	if (nullptr == generateFunctionBodyCode(*main_ast, true))
-		return 1;
+		return false;
 
-	return 0;
+	return true;
 }
 
-int LLVMBackend::compileProgram(const ProgramAST & program,
-				const char *out_filename, bool obj_output)
+bool LLVMBackend::compileProgram(const ProgramAST & program,
+				 const char *out_filename, bool obj_output)
 {
-	int ret = generateProgramCode(program);
-	if (ret)
-		return ret;
+	if (!generateProgramCode(program))
+		return false;
 
 	std::string err_str;
 
@@ -697,7 +697,7 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 	tool_output_file os(out_filename, err_str);
 	if (err_str.length() != 0) {
 		std::cerr << "ERROR: " << err_str << std::endl;
-		return 1;
+		return false;
 	}
 
 	if (obj_output) {
@@ -710,7 +710,7 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 		std::unique_ptr<TargetMachine> mach;
 		PassManager mgr;
 		formatted_raw_ostream out(os.os());
-		
+
 		llvm::InitializeAllTargets();
 		llvm::InitializeAllTargetMCs();
 		llvm::InitializeAllAsmPrinters();
@@ -721,13 +721,13 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 		target = TargetRegistry::lookupTarget(triple, err_str);
 		if (target == nullptr) {
 			std::cerr << "ERROR: " << err_str << std::endl;
-			return 1;
+			return false;
 		}
 
 		mach.reset(target->createTargetMachine(triple, cpu, features, options));
 		if (mach == nullptr) {
 			std::cerr << "ERROR: couldn't create TargetMachine" << std::endl;
-			return 1;
+			return false;
 		}
 
 		if (mach->addPassesToEmitFile(mgr, out,
@@ -736,7 +736,7 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 		{
 			std::cerr << "ERROR: couldn't add passes "
 				"to create object file" << std::endl;
-			return 1;
+			return false;
 		}
 		mgr.run(*Mod);
 	} else {
@@ -745,10 +745,10 @@ int LLVMBackend::compileProgram(const ProgramAST & program,
 
 	os.keep();
 
-	return 0;
+	return true;
 }
 
-int LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
+bool LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
 {
 	std::shared_ptr<FunctionDefinitionAST> func =
 		std::dynamic_pointer_cast<FunctionDefinitionAST>(top_level_item);
@@ -780,21 +780,21 @@ int LLVMBackend::executeTopLevelItem(std::shared_ptr<ASTBase> top_level_item)
 
 		f = generateFunctionPrototype(func);
 		if (f == nullptr)
-			return 1;
+			return false;
 		f = generateFunctionBodyCode(func, true);
 		if (f == nullptr)
-			return 1;
+			return false;
 
 		Engine->runFunction(f, {});
 		f->eraseFromParent();
 	} else {
 		f = generateFunctionPrototype(*func);
 		if (f == nullptr)
-			return 1;
+			return false;
 		f = generateFunctionBodyCode(*func);
 		if (f == nullptr)
-			return 1;
+			return false;
 	}
 
-	return 0;
+	return true;
 }

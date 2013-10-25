@@ -46,6 +46,8 @@ static void doParserTest(const std::string & src_file_path,
 	llvm::OwningPtr<llvm::MemoryBuffer> src_buffer;
 	llvm::OwningPtr<llvm::MemoryBuffer> tree_buffer;
 
+	std::cout << "Testing " << src_file_path << std::endl;
+
 	ec = llvm::MemoryBuffer::getFile(src_file_path, src_buffer);
 	if (ec) {
 		std::cerr << "TestParser ERROR: " << ec.message() << std::endl;

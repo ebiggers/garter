@@ -184,7 +184,7 @@ static void do_test(const LexerTestCase &testcase)
 		}
 
 		if (tok.Type == Token::Identifier &&
-		    (tok.Name == NULL || actual_tok->getName() == NULL ||
+		    (tok.Name == nullptr || actual_tok->getName() == nullptr ||
 		     strcmp(tok.Name, actual_tok->getName())))
 		{
 			fprintf(stderr, "Input \"%s\": identifier name "

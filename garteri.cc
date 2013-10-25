@@ -1,3 +1,7 @@
+//
+// garteri - An interpreter or just-in-time compiler for the garter language.
+//
+
 #include <frontend/Parser.h>
 #include <backend/LLVMBackend.h>
 #include <fstream>
@@ -11,8 +15,10 @@ int main(int argc, char **argv)
 	std::ifstream infile;
 	if (argc > 1) {
 		infile.open(argv[1]);
-		if (infile.fail())
+		if (infile.fail()) {
 			std::cerr << "Can't open " << argv[1] << ": " << strerror(errno) << std::endl;
+			return 1;
+		}
 		is = &infile;
 	} else {
 		is = &std::cin;
@@ -25,7 +31,7 @@ int main(int argc, char **argv)
 		backend.executeTopLevelItem(std::move(top_level_item));
 
 	if (!parser.reachedEndOfFile())
-		return 1;
+		return 3;
 
 	return 0;
 }

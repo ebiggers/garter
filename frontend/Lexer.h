@@ -9,11 +9,17 @@
 
 namespace garter {
 
+// Representation of a syntactical element in the garter language.
 class Token {
 public:
+	// All possible token types
 	enum TokenType {
+		// Special end-of-file token
 		EndOfFile = -1,
+
+		// Special error token
 		Error = 0,
+
 		And,
 		Asterisk,
 		Colon,
@@ -57,15 +63,18 @@ public:
 		While,
 	};
 
+	// Retrieve the type of a Token
 	TokenType getType() const {
 		return Type;
 	}
 
+	// Retrieve the name of a Token (only valid for Identifier Tokens)
 	const char * getName() const {
 		assert(Type == Identifier);
 		return Name;
 	};
 
+	// Retrieve the numeric value of a Token (only valid for Number Tokens)
 	int32_t getNumber() const {
 		assert(Type == Number);
 		return _Number;
@@ -92,10 +101,13 @@ private:
 	Token(enum TokenType type, char *name)
 		: Type(type), Name(name) { }
 
-	Token(enum TokenType type, int32_t number) 
+	Token(enum TokenType type, int32_t number)
 		: Type(type), _Number(number) { }
 };
 
+// Lexer for the garter language.  This class is responsible for scanning the
+// raw sequence of characters making up a garter program and returning Token
+// objects that represent syntactical elements.
 class Lexer {
 private:
 	unsigned long CurrentLineNumber;
@@ -111,13 +123,29 @@ private:
 	void init();
 
 public:
+	// Create a Lexer that reads characters from the specified
+	// null-terminated string.
 	Lexer(const char *str);
+
+	// Create a Lexer that reads characters from the specified input stream.
 	Lexer(std::istream & is);
+
 	~Lexer();
 
+	// Retrieves the next token in the input.
+	//
+	// Special values:
+	//
+	//   - A token of type Token::EndOfFile is returned at the end of the input.
+	//   - A token of type Token::Error is returned if the input is invalid or if
+	//     there was an error reading it.
 	std::unique_ptr<Token> getNextToken();
+
+	// Print an error message augmented with the current line number.
 	void reportError(const char *msg, ...);
 
+	// Returns true iff the lexer has attempted to read beyond the end of
+	// the input yet.
 	bool reachedEndOfFile() const { return InputStream->eof(); }
 };
 

@@ -227,10 +227,6 @@ next_char:
 
 void Lexer::init()
 {
-	CurrentLineNumber = 1;
-	CurrentChar = 0;
-	InputStream->unsetf(std::ios_base::skipws);
-
 	Keywords["and"]      = Token::And;
 	Keywords["def"]      = Token::Def;
 	Keywords["else"]     = Token::Else;
@@ -250,6 +246,8 @@ void Lexer::init()
 	Keywords["return"]   = Token::Return;
 	Keywords["while"]    = Token::While;
 
+	CurrentLineNumber = 1;
+	InputStream->unsetf(std::ios_base::skipws);
 	nextChar();
 }
 

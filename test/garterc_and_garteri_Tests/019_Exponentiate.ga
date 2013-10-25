@@ -1,0 +1,9 @@
+base = 0;
+while base <= 3:
+	power = 0;
+	while power <= 3:
+		print base ** power;
+		power = power + 1;
+	endwhile
+	base = base + 1;
+endwhile
