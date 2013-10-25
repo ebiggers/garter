@@ -97,7 +97,7 @@ int main()
 	std::vector<std::string> src_file_paths;
 	std::vector<std::string> tree_file_paths;
 	for (llvm::sys::fs::directory_iterator dir(dirpath, ec), dir_end;
-	     dir != dir_end; dir.increment(ec))
+	     dir != dir_end && !ec; dir.increment(ec))
 	{
 		const std::string & path = dir->path();
 		const llvm::StringRef ext(llvm::sys::path::extension(path));

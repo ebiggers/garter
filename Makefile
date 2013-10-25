@@ -17,8 +17,11 @@ FRONTEND_OBJ := $(FRONTEND_SRC:%.cc=%.o)
 BACKEND_SRC := $(wildcard backend/*.cc)
 BACKEND_OBJ := $(BACKEND_SRC:%.cc=%.o)
 
-RUNTIME_SRC := $(wildcard runtime/*.c)
-RUNTIME_OBJ := $(RUNTIME_SRC:%.c=%.o)
+RUNTIME_C_SRC := $(wildcard runtime/*.c)
+RUNTIME_GA_SRC := $(wildcard runtime/*.ga)
+RUNTIME_C_OBJ := $(RUNTIME_C_SRC:%.c=%.o)
+RUNTIME_GA_OBJ := $(RUNTIME_GA_SRC:%.ga=%.o)
+RUNTIME_OBJ := $(RUNTIME_C_OBJ) $(RUNTIME_GA_OBJ)
 
 TEST_SRC := $(wildcard test/*.cc)
 TEST_OBJ := $(TEST_SRC:%.cc=%.o)
@@ -36,15 +39,18 @@ DEP := $(OBJ:%.o=%.d)
 EXE := $(COMPILER_EXE) $(TEST_EXE)
 
 
-all:$(COMPILER_EXE)
+all:$(COMPILER_EXE) $(RUNTIME_OBJ)
 
 -include $(DEP)
 
 $(COMPILER_EXE):$(COMPILER_OBJ)
 	$(CXX) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
-$(OBJ): %.o : %.cc
+$(OBJ) $(RUNTIME_C_OBJ): %.o : %.cc
 	$(CXX) -o $@ -c $(CXXFLAGS) $(DEPFLAGS) $(CPPFLAGS) $<
+
+$(RUNTIME_GA_OBJ): %.o: %.ga garterc
+	./garterc -c $<
 
 
 test:$(TEST_EXE)

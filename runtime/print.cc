@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+extern "C"
 int32_t __garter_print(int32_t nargs, ...)
 {
 	va_list va;
