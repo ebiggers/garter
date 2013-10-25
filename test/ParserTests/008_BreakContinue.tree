@@ -1,0 +1,6 @@
+Program {
+	TopLevelItems = [
+		BreakStatement,
+		ContinueStatement,
+	],
+}

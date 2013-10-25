@@ -59,6 +59,8 @@ public:
 };
 
 class AssignmentStatementAST;
+class BreakStatementAST;
+class ContinueStatementAST;
 class ExpressionStatementAST;
 class IfStatementAST;
 class PassStatementAST;
@@ -70,6 +72,8 @@ class WhileStatementAST;
 class StatementASTVisitor {
 public:
 	virtual void visit(AssignmentStatementAST &) = 0;
+	virtual void visit(BreakStatementAST &) = 0;
+	virtual void visit(ContinueStatementAST &) = 0;
 	virtual void visit(ExpressionStatementAST &) = 0;
 	virtual void visit(IfStatementAST &) = 0;
 	virtual void visit(PassStatementAST &) = 0;
@@ -101,6 +105,20 @@ public:
 	{
 	}
 
+	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
+};
+
+// AST node representing a break statement
+class BreakStatementAST : public StatementAST {
+public:
+	void print(std::ostream & os) const;
+	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
+};
+
+// AST node representing a break statement
+class ContinueStatementAST : public StatementAST {
+public:
 	void print(std::ostream & os) const;
 	void acceptVisitor(StatementASTVisitor & v) { v.visit(*this); }
 };
@@ -360,9 +378,11 @@ private:
 	std::unique_ptr<ExpressionAST>          parseNotExpression();
 	std::unique_ptr<ExpressionAST>          parseAndExpression();
 	std::unique_ptr<ExpressionAST>          parseExpression();
+	std::unique_ptr<AssignmentStatementAST> parseAssignmentStatement();
+	std::unique_ptr<BreakStatementAST>      parseBreakStatement();
+	std::unique_ptr<ContinueStatementAST>   parseContinueStatement();
 	std::unique_ptr<ExpressionStatementAST> parseExpressionStatement();
 	std::unique_ptr<FunctionDefinitionAST>  parseFunctionDefinition();
-	std::unique_ptr<AssignmentStatementAST> parseAssignmentStatement();
 	std::unique_ptr<IfStatementAST>         parseIfStatement();
 	std::unique_ptr<PassStatementAST>       parsePassStatement();
 	std::unique_ptr<PrintStatementAST>      parsePrintStatement();

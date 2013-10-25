@@ -22,8 +22,10 @@ public:
 
 		And,
 		Asterisk,
+		Break,
 		Colon,
 		Comma,
+		Continue,
 		Def,
 		DoubleAsterisk,
 		DoubleEquals,

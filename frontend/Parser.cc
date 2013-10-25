@@ -99,6 +99,16 @@ void AssignmentStatementAST::print(std::ostream & os) const
 	os << "}";
 }
 
+void BreakStatementAST::print(std::ostream & os) const
+{
+	os << "BreakStatement";
+}
+
+void ContinueStatementAST::print(std::ostream & os) const
+{
+	os << "ContinueStatement";
+}
+
 void PassStatementAST::print(std::ostream & os) const
 {
 	os << "PassStatement";
@@ -731,6 +741,42 @@ Parser::parseAssignmentStatement()
 						   std::move(rhs)));
 }
 
+/* <break_stmt> ::=
+ *	break ;
+ */
+std::unique_ptr<BreakStatementAST>
+Parser::parseBreakStatement()
+{
+	assert(CurrentToken->getType() == Token::Break);
+
+	nextToken();
+
+	if (CurrentToken->getType() != Token::Semicolon) {
+		Lexer.reportError("expected ';'");
+		return nullptr;
+	}
+
+	return std::unique_ptr<BreakStatementAST>(new BreakStatementAST());
+}
+
+/* <continue_stmt> ::=
+ *	continue ;
+ */
+std::unique_ptr<ContinueStatementAST>
+Parser::parseContinueStatement()
+{
+	assert(CurrentToken->getType() == Token::Continue);
+
+	nextToken();
+
+	if (CurrentToken->getType() != Token::Semicolon) {
+		Lexer.reportError("expected ';'");
+		return nullptr;
+	}
+
+	return std::unique_ptr<ContinueStatementAST>(new ContinueStatementAST());
+}
+
 /* <expr_stmt> ::=
  *	<expr> ;
  */
@@ -959,6 +1005,8 @@ Parser::parseWhileStatement()
 
 /* <stmt> ::=
  *	<assignment_stmt>
+ *	| <break_stmt>
+ *	| <continue_stmt>
  *	| <expr_stmt>
  *	| <if_stmt>
  *	| <pass_stmt>
@@ -970,6 +1018,10 @@ std::unique_ptr<StatementAST>
 Parser::parseStatement()
 {
 	switch (CurrentToken->getType()) {
+	case Token::Break:
+		return parseBreakStatement();
+	case Token::Continue:
+		return parseContinueStatement();
 	case Token::Identifier:
 		nextTokenLookahead();
 		if (NextToken->getType() == Token::Equals)

@@ -228,6 +228,8 @@ next_char:
 void Lexer::init()
 {
 	Keywords["and"]      = Token::And;
+	Keywords["break"]    = Token::Break;
+	Keywords["continue"] = Token::Continue;
 	Keywords["def"]      = Token::Def;
 	Keywords["else"]     = Token::Else;
 	Keywords["elif"]     = Token::Elif;

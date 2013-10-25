@@ -129,6 +129,11 @@ private:
 	// statement
 	bool StatementSuccessful;
 
+	// Basic blocks to jump to on break and continue statements (nullptr's
+	// if not in loop)
+	BasicBlock * BreakTarget;
+	BasicBlock * ContinueTarget;
+
 	Value *isZeroOrNotZero(Value *val, bool is_zero);
 	Value *isZero(Value *val);
 	Value *isNotZero(Value *val);
@@ -138,10 +143,13 @@ public:
 				 bool toplevel)
 		: Backend(backend), CurrentFunction(f),
 		  AtTopLevel(toplevel), NamedValues(named_values),
-		  ExpressionValue(nullptr)
+		  ExpressionValue(nullptr), StatementSuccessful(false),
+		  BreakTarget(nullptr), ContinueTarget(nullptr)
 	{ }
 
 	void visit(AssignmentStatementAST &);
+	void visit(BreakStatementAST &);
+	void visit(ContinueStatementAST &);
 	void visit(ExpressionStatementAST &);
 	void visit(IfStatementAST &);
 	void visit(PassStatementAST &);
@@ -302,6 +310,36 @@ void LLVMCodeGeneratorVisitor::visit(BinaryExpressionAST & expr)
 	}
 	if (ExpressionValue != nullptr)
 		ExpressionValue = Backend.Builder.CreateZExt(ExpressionValue, Backend.Int32Ty);
+}
+
+void LLVMCodeGeneratorVisitor::visit(BreakStatementAST & expr __attribute__((unused)))
+{
+	if (BreakTarget == nullptr) {
+		std::cerr << "ERROR: break statement not in loop" << std::endl;
+		StatementSuccessful = false;
+	} else {
+		Backend.Builder.CreateBr(BreakTarget);
+
+		BasicBlock *deadcode = BasicBlock::Create(Backend.Ctx,
+							  "", CurrentFunction);
+		Backend.Builder.SetInsertPoint(deadcode);
+		StatementSuccessful = true;
+	}
+}
+
+void LLVMCodeGeneratorVisitor::visit(ContinueStatementAST & expr __attribute__((unused)))
+{
+	if (ContinueTarget == nullptr) {
+		std::cerr << "ERROR: continue statement not in loop" << std::endl;
+		StatementSuccessful = false;
+	} else {
+		Backend.Builder.CreateBr(ContinueTarget);
+
+		BasicBlock *deadcode = BasicBlock::Create(Backend.Ctx,
+							  "", CurrentFunction);
+		Backend.Builder.SetInsertPoint(deadcode);
+		StatementSuccessful = true;
+	}
 }
 
 // Generate LLVM IR in the current function for a function call.  The resulting
@@ -562,14 +600,19 @@ void LLVMCodeGeneratorVisitor::visit(WhileStatementAST & stmt)
 {
 	StatementSuccessful = false;
 
+	BasicBlock * break_target_save = BreakTarget;
+	BasicBlock * continue_target_save = ContinueTarget;
+
 	// Basic block for testing while loop condition
 	BasicBlock *condbb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
+	ContinueTarget = condbb;
 
 	// Basic black for while loop body
 	BasicBlock *bodybb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
 
 	// Basic block for continuing after finishing while loop
 	BasicBlock *contbb = BasicBlock::Create(Backend.Ctx, "", CurrentFunction);
+	BreakTarget = contbb;
 
 	// Branch from current position to while loop condition
 	Backend.Builder.CreateBr(condbb);
@@ -578,17 +621,20 @@ void LLVMCodeGeneratorVisitor::visit(WhileStatementAST & stmt)
 	Backend.Builder.SetInsertPoint(condbb);
 	stmt.Condition->acceptVisitor(*this);
 	if (ExpressionValue == nullptr)
-		return;
-	Value *cond = isNotZero(ExpressionValue);
-	// Continue or break loop based on condition
-	Backend.Builder.CreateCondBr(cond, bodybb, contbb);
+		goto out;
+	{
+		Value *cond = isNotZero(ExpressionValue);
+		// Continue or break loop based on condition
+		Backend.Builder.CreateCondBr(cond, bodybb, contbb);
+	}
 
 	// Generate IR for loop body
 	Backend.Builder.SetInsertPoint(bodybb);
+
 	for (auto stmtptr : stmt.Body) {
 		stmtptr->acceptVisitor(*this);
 		if (!StatementSuccessful)
-			return;
+			goto out;
 	}
 	// At end of body, jump to condition test
 	Backend.Builder.CreateBr(condbb);
@@ -598,6 +644,10 @@ void LLVMCodeGeneratorVisitor::visit(WhileStatementAST & stmt)
 	Backend.Builder.SetInsertPoint(contbb);
 
 	StatementSuccessful = true;
+
+out:
+	BreakTarget = break_target_save;
+	ContinueTarget = continue_target_save;
 }
 
 // Generate LLVM IR for a function body.
