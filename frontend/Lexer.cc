@@ -95,6 +95,7 @@ next_char:
 	case ' ':
 	case '\t':
 	case '\v':
+	case '\r':
 		// Skip whitespace character
 		nextChar();
 		goto next_char;
