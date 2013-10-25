@@ -231,24 +231,24 @@ void Lexer::init()
 	CurrentChar = 0;
 	InputStream->unsetf(std::ios_base::skipws);
 
-	Keywords.insert(std::make_pair("and", Token::And));
-	Keywords.insert(std::make_pair("def", Token::Def));
-	Keywords.insert(std::make_pair("else", Token::Else));
-	Keywords.insert(std::make_pair("elif", Token::Elif));
-	Keywords.insert(std::make_pair("enddef", Token::EndDef));
-	Keywords.insert(std::make_pair("endfor", Token::EndFor));
-	Keywords.insert(std::make_pair("endif", Token::EndIf));
-	Keywords.insert(std::make_pair("endwhile", Token::EndWhile));
-	Keywords.insert(std::make_pair("extern", Token::Extern));
-	Keywords.insert(std::make_pair("for", Token::For));
-	Keywords.insert(std::make_pair("if", Token::If));
-	Keywords.insert(std::make_pair("in", Token::In));
-	Keywords.insert(std::make_pair("not", Token::Not));
-	Keywords.insert(std::make_pair("or", Token::Or));
-	Keywords.insert(std::make_pair("pass", Token::Pass));
-	Keywords.insert(std::make_pair("print", Token::Print));
-	Keywords.insert(std::make_pair("return", Token::Return));
-	Keywords.insert(std::make_pair("while", Token::While));
+	Keywords["and"]      = Token::And;
+	Keywords["def"]      = Token::Def;
+	Keywords["else"]     = Token::Else;
+	Keywords["elif"]     = Token::Elif;
+	Keywords["enddef"]   = Token::EndDef;
+	Keywords["endfor"]   = Token::EndFor;
+	Keywords["endif"]    = Token::EndIf;
+	Keywords["endwhile"] = Token::EndWhile;
+	Keywords["extern"]   = Token::Extern;
+	Keywords["for"]      = Token::For;
+	Keywords["if"]       = Token::If;
+	Keywords["in"]       = Token::In;
+	Keywords["not"]      = Token::Not;
+	Keywords["or"]       = Token::Or;
+	Keywords["pass"]     = Token::Pass;
+	Keywords["print"]    = Token::Print;
+	Keywords["return"]   = Token::Return;
+	Keywords["while"]    = Token::While;
 
 	nextChar();
 }
