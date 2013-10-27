@@ -6,19 +6,6 @@
 
 using namespace garter;
 
-enum CharType {
-	LOWER_CASE = 0x01,
-	UPPER_CASE = 0x02,
-	UNDERSCORE = 0x04,
-	NUMBER     = 0x08,
-};
-
-static const uint8_t CharTab[256] = {
-	['a' ... 'z'] = LOWER_CASE,
-	['A' ... 'Z'] = UPPER_CASE,
-	['_']         = UNDERSCORE,
-	['0' ... '9'] = NUMBER,
-};
 
 void Lexer::reportError(const char *format, ...)
 {
@@ -251,6 +238,16 @@ void Lexer::init()
 	CurrentLineNumber = 1;
 	InputStream->unsetf(std::ios_base::skipws);
 	nextChar();
+
+	memset(CharTab, 0, sizeof(CharTab));
+
+	for (uint8_t c = 'a'; c <= 'z'; c++)
+		CharTab[c] |= LOWER_CASE;
+	for (uint8_t c = 'A'; c <= 'Z'; c++)
+		CharTab[c] |= UPPER_CASE;
+	CharTab[(uint8_t)'_'] |= UNDERSCORE;
+	for (uint8_t c = '0'; c <= '9'; c++)
+		CharTab[c] |= NUMBER;
 }
 
 Lexer::Lexer(const char *str)

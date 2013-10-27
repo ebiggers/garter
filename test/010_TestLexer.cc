@@ -5,150 +5,153 @@
 
 using namespace garter;
 
-static const struct LexerTestCase {
-	const char *Input;
-	struct ExpectedToken {
-		Token::TokenType Type;
+struct ExpectedToken {
+	Token::TokenType Type;
+	union {
 		const char *Name;
 		int32_t Number;
-	} ExpectedOutput[9];
+	};
+
+	ExpectedToken()
+	{ Type = Token::EndOfFile; }
+
+	ExpectedToken(Token::TokenType type)
+	{ Type = type; }
+
+	ExpectedToken(const char *name)
+	{ Type = Token::Identifier; Name = name; }
+
+	ExpectedToken(int32_t number)
+	{ Type = Token::Number; Number = number; }
+};
+
+static const struct LexerTestCase {
+	const char *Input;
+	struct ExpectedToken ExpectedOutput[9];
 } testcases[] = {
 	{
 		.Input = "",
 		.ExpectedOutput =
 		{
-			{.Type = Token::EndOfFile},
 		},
-
 	},
 	{
 		.Input = "(",
 		.ExpectedOutput =
 		{
-			{.Type = Token::LeftParenthesis},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(Token::LeftParenthesis),
 		},
 	},
 	{
 		.Input = "():;,[]",
 		.ExpectedOutput =
 		{
-			{.Type = Token::LeftParenthesis},
-			{.Type = Token::RightParenthesis},
-			{.Type = Token::Colon},
-			{.Type = Token::Semicolon},
-			{.Type = Token::Comma},
-			{.Type = Token::LeftSquareBracket},
-			{.Type = Token::RightSquareBracket},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(Token::LeftParenthesis),
+			ExpectedToken(Token::RightParenthesis),
+			ExpectedToken(Token::Colon),
+			ExpectedToken(Token::Semicolon),
+			ExpectedToken(Token::Comma),
+			ExpectedToken(Token::LeftSquareBracket),
+			ExpectedToken(Token::RightSquareBracket),
 		},
 	},
 	{
 		.Input = "0",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Number, .Number = 0},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(0),
 		},
 	},
 	{
 		.Input = "0000000000003",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Number, .Number = 3},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(3),
 		},
 	},
 	{
 		.Input = "138",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Number, .Number = 138},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(138),
 		},
 	},
 	{
 		.Input = "2147483647",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Number, .Number = 2147483647},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(2147483647),
 		},
 	},
 	{
 		.Input = "2147483648",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Error},
+			ExpectedToken(Token::Error),
 		},
 	},
 	{
 		.Input = "a",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Identifier, .Name = "a"},
-			{.Type = Token::EndOfFile},
+			ExpectedToken("a"),
 		},
 	},
 	{
 		.Input = "_azAZ09",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Identifier, .Name = "_azAZ09"},
-			{.Type = Token::EndOfFile},
+			ExpectedToken("_azAZ09"),
 		},
 	},
 	{
 		.Input = "if if0 for while",
 		.ExpectedOutput =
 		{
-			{.Type = Token::If},
-			{.Type = Token::Identifier, .Name = "if0"},
-			{.Type = Token::For},
-			{.Type = Token::While},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(Token::If),
+			ExpectedToken("if0"),
+			ExpectedToken(Token::For),
+			ExpectedToken(Token::While),
 		},
 	},
 	{
 		.Input = "-10**2 + 3/b",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Minus},
-			{.Type = Token::Number, .Number = 10},
-			{.Type = Token::DoubleAsterisk},
-			{.Type = Token::Number, .Number = 2},
-			{.Type = Token::Plus},
-			{.Type = Token::Number, .Number = 3},
-			{.Type = Token::ForwardSlash},
-			{.Type = Token::Identifier, .Name = "b"},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(Token::Minus),
+			ExpectedToken(10),
+			ExpectedToken(Token::DoubleAsterisk),
+			ExpectedToken(2),
+			ExpectedToken(Token::Plus),
+			ExpectedToken(3),
+			ExpectedToken(Token::ForwardSlash),
+			ExpectedToken("b"),
 		},
 	},
 	{
 		.Input = "< > <= >= == !=",
 		.ExpectedOutput =
 		{
-			{.Type = Token::LessThan},
-			{.Type = Token::GreaterThan},
-			{.Type = Token::LessThanOrEqualTo},
-			{.Type = Token::GreaterThanOrEqualTo},
-			{.Type = Token::DoubleEquals},
-			{.Type = Token::NotEqualTo},
-			{.Type = Token::EndOfFile},
+			ExpectedToken(Token::LessThan),
+			ExpectedToken(Token::GreaterThan),
+			ExpectedToken(Token::LessThanOrEqualTo),
+			ExpectedToken(Token::GreaterThanOrEqualTo),
+			ExpectedToken(Token::DoubleEquals),
+			ExpectedToken(Token::NotEqualTo),
 		},
 	},
 	{
 		.Input = "!",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Error},
+			ExpectedToken(Token::Error),
 		},
 	},
 	{
 		.Input = "\xff",
 		.ExpectedOutput =
 		{
-			{.Type = Token::Error},
+			ExpectedToken(Token::Error),
 		},
 	},
 };
@@ -163,8 +166,7 @@ static void do_test(const LexerTestCase &testcase)
 
 	for (size_t j = 0; j < ARRAY_LEN(testcase.ExpectedOutput); j++) {
 
-		const LexerTestCase::ExpectedToken &tok =
-				testcase.ExpectedOutput[j];
+		const ExpectedToken &tok = testcase.ExpectedOutput[j];
 		std::unique_ptr<Token> actual_tok = lexer.getNextToken();
 
 		if (tok.Type != actual_tok->getType()) {

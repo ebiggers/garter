@@ -359,7 +359,7 @@ public:
 // higher-level constructs are recognized using a recursive decent parser.
 class Parser {
 private:
-	Lexer Lexer;
+	Lexer TheLexer;
 	std::unique_ptr<Token> CurrentToken;
 	std::unique_ptr<Token> NextToken;
 
@@ -395,22 +395,22 @@ private:
 		if (NextToken)
 			CurrentToken = std::move(NextToken);
 		else
-			CurrentToken = Lexer.getNextToken();
+			CurrentToken = TheLexer.getNextToken();
 	}
 
 	void nextTokenLookahead()
 	{
 		if (NextToken == nullptr)
-			NextToken = Lexer.getNextToken();
+			NextToken = TheLexer.getNextToken();
 	}
 public:
 	// Create a Parser that reads a garter program from the specified
 	// null-terminated string.
-	Parser(const char *str) : Lexer(str) { }
+	Parser(const char *str) : TheLexer(str) { }
 
 	// Create a Parser that reads a garter program from the specified input
 	// stream.
-	Parser(std::istream & is) : Lexer(is) { }
+	Parser(std::istream & is) : TheLexer(is) { }
 
 	// Parse the input program and returns an abstract syntax tree
 	// representing it, or nullptr if the input is not a valid program.
@@ -426,7 +426,7 @@ public:
 
 	// Returns true iff the parser has attempted to read beyond the end of
 	// the input.
-	bool reachedEndOfFile() const { return Lexer.reachedEndOfFile(); }
+	bool reachedEndOfFile() const { return TheLexer.reachedEndOfFile(); }
 };
 
 } // End garter namespace

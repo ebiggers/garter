@@ -322,7 +322,7 @@ Parser::parseIdentifierExpression()
 			} else if (CurrentToken->getType() == Token::RightParenthesis) {
 				break;
 			} else {
-				Lexer.reportError("expected ',' or ')' in function call");
+				TheLexer.reportError("expected ',' or ')' in function call");
 				return nullptr;
 			}
 		}
@@ -348,7 +348,7 @@ Parser::parseParenthesizedExpression()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::RightParenthesis) {
-		Lexer.reportError("expected ')'");
+		TheLexer.reportError("expected ')'");
 		return nullptr;
 	}
 	nextToken();
@@ -373,12 +373,12 @@ Parser::parsePrimaryExpression()
 	case Token::LeftParenthesis:
 		return parseParenthesizedExpression();
 	case Token::EndOfFile:
-		Lexer.reportError("unexpected end of file");
+		TheLexer.reportError("unexpected end of file");
 		return nullptr;
 	case Token::Error:
 		return nullptr;
 	default:
-		Lexer.reportError("expected start of primary expression");
+		TheLexer.reportError("expected start of primary expression");
 		return nullptr;
 	}
 }
@@ -647,7 +647,7 @@ Parser::parseFunctionDefinition()
 		is_extern = true;
 		nextToken();
 		if (CurrentToken->getType() != Token::Def) {
-			Lexer.reportError("expected 'def' after 'extern'");
+			TheLexer.reportError("expected 'def' after 'extern'");
 			return nullptr;
 		}
 	} else {
@@ -658,14 +658,14 @@ Parser::parseFunctionDefinition()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Identifier) {
-		Lexer.reportError("expected identifier (function name) after 'def'");
+		TheLexer.reportError("expected identifier (function name) after 'def'");
 		return nullptr;
 	}
 	name = CurrentToken->getName();
 	nextToken();
 
 	if (CurrentToken->getType() != Token::LeftParenthesis) {
-		Lexer.reportError("expected '('");
+		TheLexer.reportError("expected '('");
 		return nullptr;
 	}
 	nextToken();
@@ -673,7 +673,7 @@ Parser::parseFunctionDefinition()
 	if (CurrentToken->getType() != Token::RightParenthesis) {
 		for (;;) {
 			if (CurrentToken->getType() != Token::Identifier) {
-				Lexer.reportError("expected identifier (named parameter) "
+				TheLexer.reportError("expected identifier (named parameter) "
 						  "in function prototype");
 				return nullptr;
 			}
@@ -686,7 +686,7 @@ Parser::parseFunctionDefinition()
 			} else if (CurrentToken->getType() == Token::RightParenthesis) {
 				break;
 			} else {
-				Lexer.reportError("expected ',' or ')' in function prototype");
+				TheLexer.reportError("expected ',' or ')' in function prototype");
 				return nullptr;
 			}
 		}
@@ -694,7 +694,7 @@ Parser::parseFunctionDefinition()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Colon) {
-		Lexer.reportError("expected ':'");
+		TheLexer.reportError("expected ':'");
 		return nullptr;
 	}
 	nextToken();
@@ -732,7 +732,7 @@ Parser::parseAssignmentStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -752,7 +752,7 @@ Parser::parseBreakStatement()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -770,7 +770,7 @@ Parser::parseContinueStatement()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -789,7 +789,7 @@ Parser::parseExpressionStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -816,7 +816,7 @@ Parser::parseIfStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Colon) {
-		Lexer.reportError("expected ':'");
+		TheLexer.reportError("expected ':'");
 		return nullptr;
 	}
 	nextToken();
@@ -844,7 +844,7 @@ Parser::parseIfStatement()
 			return nullptr;
 
 		if (CurrentToken->getType() != Token::Colon) {
-			Lexer.reportError("expected ':'");
+			TheLexer.reportError("expected ':'");
 			return nullptr;
 		}
 
@@ -872,7 +872,7 @@ Parser::parseIfStatement()
 		nextToken();
 
 		if (CurrentToken->getType() != Token::Colon) {
-			Lexer.reportError("expected ':'");
+			TheLexer.reportError("expected ':'");
 			return nullptr;
 		}
 
@@ -903,7 +903,7 @@ Parser::parsePassStatement()
 	nextToken();
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -936,7 +936,7 @@ Parser::parsePrintStatement()
 			} else if (CurrentToken->getType() == Token::Semicolon) {
 				break;
 			} else {
-				Lexer.reportError("expected ';' or ','");
+				TheLexer.reportError("expected ';' or ','");
 				return nullptr;
 			}
 		}
@@ -962,7 +962,7 @@ Parser::parseReturnStatement()
 		return nullptr;
 
 	if (CurrentToken->getType() != Token::Semicolon) {
-		Lexer.reportError("expected ';'");
+		TheLexer.reportError("expected ';'");
 		return nullptr;
 	}
 
@@ -983,7 +983,7 @@ Parser::parseWhileStatement()
 	std::unique_ptr<ExpressionAST> condition = parseExpression();
 
 	if (CurrentToken->getType() != Token::Colon) {
-		Lexer.reportError("expected ':'");
+		TheLexer.reportError("expected ':'");
 		return nullptr;
 	}
 

@@ -117,12 +117,20 @@ private:
 	unsigned char CurrentChar;
 	std::istream *InputStream;
 	std::istringstream *StringStream;
+	uint8_t CharTab[256];
 
 	std::unique_ptr<Token> lexNumber();
 	std::unique_ptr<Token> lexIdentifierOrKeyword();
 	void nextChar();
 
 	void init();
+
+	enum CharType {
+		LOWER_CASE = 0x01,
+		UPPER_CASE = 0x02,
+		UNDERSCORE = 0x04,
+		NUMBER     = 0x08,
+	};
 
 public:
 	// Create a Lexer that reads characters from the specified
