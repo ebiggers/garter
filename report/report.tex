@@ -56,14 +56,14 @@ language using an LLVM back-end} \\
 
 \section{Introduction}
 
-Traditionally, a compiler is a program that translates source code written in a
+A compiler is a program that translates source code written in a
 programming language to another computer language, often assembly language for a
 physical computer.  The standard software architecture of such a program can be
 divided into the front-end, middle-end, and back-end.  The front-end consists of
-a lexer, which produces a stream of syntactical tokens from a string in the
-input language, and the parser, which interprets the stream of syntactical
-tokens as a string in the programming language specified as a formal
-context-free grammar and builds the corresponding abstract syntax tree (AST). \
+a lexer, which produces a sequence of syntactical tokens from a string in the
+input language, and the parser, which interprets the sequence of syntactical
+tokens as a string in the programming language (specified with a formal
+context-free grammar) and builds the corresponding abstract syntax tree (AST). \
 The middle-end consists of various language-dependent semantic analysis passes
 to elaborate the meaning of the program as well as various optimization passes
 to optimize the AST. \ The back-end consists of the translation of the AST into
@@ -74,7 +74,7 @@ implement support for multiple programming languages by using different
 front-ends but shared back-ends.  Second, they implement support for multiple
 target machines by using different back-ends.  Many optimization passes in the
 middle-end can also be shared between all front-ends and back-ends, although
-semantic analysis may be coupled to front-ends, and some optimization passes may
+semantic analysis may be coupled to specific front-ends, and some optimization passes may
 be coupled to specific back-ends.
 
 Still, despite the code reuse possible in the GCC project, it is primarily
@@ -95,7 +95,7 @@ infrastructure that supports a broad range of applications, not only virtual
 machines.} project provides a compiler infrastructure consisting of a
 well-defined language-agnostic intermediate representation and a set of reusable
 libraries, including libraries for optimization and code generation
-\cite{lattner2004llvm}.  Originally designed primarily for {\em life-long}
+\cite{lattner2004llvm}.  Originally designed for {\em life-long}
 (including install-time and runtime) optimization of programs in contrast to
 traditional compilers, due to its reusable design LLVM has also been proven
 useful to use as the back-end for traditional static compilers.  Although the
@@ -114,7 +114,7 @@ generated code.  I also present an interpreter for garter that uses LLVM to
 perform just-in-time (JIT) compilation.  The garter language includes
 fundamental programming language concepts such as mutable variables, loops, and
 functions, although it does not support any types except signed 32-bit integers.
-My compiler is an ahead-of-time compiler that generates native object files or
+The compiler is an ahead-of-time compiler that generates native object files or
 executables, whereas the interpreter executes garter code statement-by-statement
 using either interpretation or JIT compilation, depending on the method the LLVM
 execution engine chooses.  This project also serves as a demonstration of the
@@ -134,8 +134,8 @@ $ git clone https://github.com/ebiggers/garter
 \section{The garter language}
 
 The garter language implemented for this project is based on a document by Susan
-Fox specifying its formal grammar, which will not be replicated here
-\cite{garter}.  The garter language can be described as a simple Python-like
+Fox specifying its formal grammar \cite{garter}, which will not be replicated
+here.  The garter language can be described as a simple Python-like
 language.  However, unlike Python, the semantics of a garter program are
 sufficiently static that it can easily be compiled ahead-of-time, like C, rather
 than interpreted.
@@ -160,7 +160,7 @@ I did make several modifications to the garter language, noted below:
 
 \section{Frontend}
 
-This section discusses the design and implementation of the garter front-end,
+This section presents the design and implementation of the garter front-end,
 which consists of the lexer and parser.  As a whole, the front-end takes as input
 a program in the garter language and produces as output either the resulting
 AST (abstract syntax tree) for the full program, or a series of ASTs for the
@@ -185,7 +185,7 @@ any global variables, unlike typical designs with {\em flex} and {\em bison}.
 
 The garter lexer is implemented by the class {\tt garter::Lexer}.  A Lexer can
 be constructed by passing a reference to an input stream ({\tt std::istream}) or
-a string from which the garter language input will be read.  The method {\tt
+string ({\tt const char *}) from which the garter language input will be read.  The method {\tt
 garter::Lexer::getNextToken()} can then be called repeatedly to tokenize the
 input into {\tt garter::Token}'s, which describe the various syntactical
 elements such as keywords, identifiers, numbers, and operators.  Special error
@@ -211,7 +211,7 @@ Unit tests for the lexer are described in Section \ref{sec:testing}.
 The garter parser is implemented by the class {\tt garter::Parser}.  Like the
 Lexer, a Parser can be constructed by passing a reference to either an input
 stream or a string.  The parser automatically creates a Lexer internally.
-Consequently, a typical user of the front-end only need create the Parser.  The
+Consequently, a typical user of the front-end need only create the Parser.  The
 parser translates the source program into either a single AST for the entire
 program (if {\tt garter::Parser::parseProgram()} is called) or a sequence of
 ASTs for each top-level statement or function definition (if \\{\tt
@@ -272,7 +272,7 @@ needed to specify the corresponding source construct. For example, a {\tt
 WhileStatementAST} contains an {\tt ExpressionAST} that specifies the while loop
 condition and an array of {\tt StatementAST}'s that specify the while loop body.
 The implementation is complicated slightly by code that I added to print a
-representation of each AST type and also support visitors that operate on each
+string representation of each AST type and also support visitors that operate on each
 node in an AST.
 
 If a parse error occurs, the parser or lexer prints an appropriate English error
@@ -300,28 +300,31 @@ explicit dataflow representation.  This higher-level information is useful for
 code analysis performed during optimization and code generation
 \cite{lattner2004llvm}.
 
-When the LLVMBackend is created, a unique per-thread LLVM context ({\tt
-llvm::LLVMContext}) and an unnamed LLVM module ({\tt llvm::Module}) is created.
-A LLVM module is a top-level container for LLVM IR objects.  The LLVMBackend
+The constructor for an LLVMBackend creates a unique per-thread LLVM context ({\tt
+llvm::LLVMContext}) and an unnamed LLVM module ({\tt llvm::Module}).
+A LLVM module is a top-level container for LLVM IR objects. The {\tt
+LLVMBackend::generateProgramIR()} method
 then fills this LLVM module with the generated IR.
 
-The LLVMBackend begins LLVM IR generation for a full garter program with a pass
-that collects and generates prototypes for all defined functions.  The
-LLVMBackend generates each prototype by creating a named and typed {\tt
-llvm::Function} object in the module.  Then, the LLVMBackend generates a
-prototype for an anonymous function representing the top-level statements in the
-program.
+{\tt generateProgramIR()} begins with a pass
+that collects and generates prototypes for all defined functions.
+Each such prototype is generated by creating a named and typed {\tt
+llvm::Function} object in the module.  {\tt generateProgramIR()} then generates a
+prototype for {\tt main()}, which will contain the top-level statements in the
+program and will be the entry point of the program.\footnote{
+    {\tt main()} is expected to be called automatically when the program is
+    executed. {\tt garterc} implements this by linking with the startup code
+that normally calls {\tt main()} in C programs.}
 
-Following the generation of function prototypes, the LLVMBackend generates LLVM
-IR for function definitions, including the anonymous function representing the
-top-level statements.  At the beginning of IR generation for a function
-definition, the LLVMBackend creates a basic block ({\tt llvm::BasicBlock}) at
+Next, {\tt generateProgramIR()} generates LLVM
+IR for all function definitions, including {\tt main()}.
+For each function, {\tt generateProgramIR()} first creates a basic block ({\tt llvm::BasicBlock}) at
 the beginning of the function's LLVM IR representation and creates LLVM IR
 instructions that store the function's parameters on the stack.\footnote{Values
     in the LLVM IR are immutable; however, mutable variables can be simulated by
 assigning them to stack slots.  LLVM contains an optimization pass that promotes
-such variables to real LLVM IR values when possible \cite{kaleidoscope}.} The
-LLVMBackend then generates LLVM IR for each statement in the function and
+such variables to immutable LLVM IR values when possible \cite{kaleidoscope}.}
+{\tt generateProgramIR()} then generates LLVM IR for each statement in the function and
 finally finishes with a return statement in case the garter program did not
 explicitly include one at the end of the function definition.
 
@@ -335,10 +338,10 @@ value.  Examples of LLVM values are constants, number variables, and pointer
 variables.  The LLVMBackend uses a {\tt NamedValues} map to keep track of which
 variables are declared within each function.  When the program being compiled
 references a variable, the LLVMBackend looks up its name in the {\tt
-NamedValues} map to translate it into the corresponding LLVM value.
+NamedValues} map to translate it into the corresponding {\tt llvm::Value}.
 Alternatively, when the program being compiled assigns to a variable for the
-first time, the LLVMBackend creates an LLVM value for it (through a stack
-allocation) and places it in the {\tt NamedValues} map.
+first time, the LLVMBackend creates an {\tt llvm::Value} for it (through a stack
+allocation) and saves a reference to it in the {\tt NamedValues} map.
 
 For generation of arithmetic operations and tests, LLVM provides functions that
 take in two values and create the specified arithmetic operation.  For example,
@@ -347,8 +350,9 @@ a new {\tt llvm::Value} that is the result of a typed arithmetic addition.
 
 For {\tt print} statements, the back-end generates calls to {\tt
 \_\_garter\_print()}, and for exponentiation (via the {\tt **} operator), the
-back-end generates calls to {\tt \_\_garter\_exponentiate()}, both of which are
-expected to be available at runtime.  More details can be found in Section
+back-end generates calls to {\tt \_\_garter\_exponentiate()}.  Both these
+functions are
+expected to be available at runtime; more details can be found in Section
 \ref{sec:runtime}.
 
 \subsection{Optimization}
@@ -356,9 +360,9 @@ expected to be available at runtime.  More details can be found in Section
 LLVM provides a modular infrastructure for {\em passes}, which typically perform
 some sort of analysis or optimizing transformation on the IR contained in an
 LLVM module.  Passes can be run on an LLVM module by populating an instance of
-{\tt llvm::PassManager} with passes, then calling the {\tt
-llvm::PassManager::run()} method.  Dozens of different optimization passes are
-available, including dead code elimination, constant propagation, instruction
+{\tt llvm::PassManager} with passes, then calling {\tt
+llvm::PassManager::run()}.  Dozens of different optimization passes are
+available, including but not limited to dead code elimination, constant propagation, instruction
 combining, global variable optimization, function inlining, loop strength
 reduction, loop unrolling, tail call elimination, loop invariant code motion,
 and automatic vectorization.
@@ -386,14 +390,15 @@ object file.
 Alternatively, LLVMBackend also exports a method {\tt
 LLVMBackend::executeTopLevelItem()} that is used by the garter interpreter.  It
 is intended to be called repeatedly for each top-level item (statement or
-function) in a garter program.  If passed the AST for a function definition, the
-function definition is simply compiled to LLVM IR.  But if passed a statement
-definition, {\tt executeTopLevelItem()} creates an anonymous LLVM IR function
+function) in a garter program.  If passed the AST for a function definition,
+{\tt executeTopLevelItem()} simply compiles the
+function definition to LLVM IR.  But if passed a statement
+AST, {\tt executeTopLevelItem()} creates an anonymous LLVM IR function
 containing the statement, then executes it using an instance of {\tt
 llvm::ExecutionEngine}.  An ExecutionEngine either interprets the LLVM IR, or
 JIT compiles it and executes it.  If the statement calls any functions defined
 in the module, the ExecutionEngine interprets or JIT compiles them as needed.
-All in all, this behavior makes possible a working line-by-line interpreter for
+All in all, this behavior makes possible a working interpreter for
 the garter language with little new code over that already used to implement the
 ahead-of-time compiler.
 
@@ -401,7 +406,7 @@ ahead-of-time compiler.
 
 \label{sec:runtime}
 
-Currently, {\tt print} statements and exponentiation (with {\tt **}) require
+Currently, {\tt print} statements and the exponentiation operator ({\tt **}) require
 runtime support.  {\tt print} statements are implemented using the C++ function
 shown in Figure \ref{fig:print}, whereas exponentiation is implemented using the
 garter function shown in Figure \ref{fig:exponentiate}.  In both cases, the
@@ -457,7 +462,12 @@ linking and leave the output as an unlinked object file.  In addition, I
 implemented a {\tt -l} option, which causes the output to be LLVM IR rather than
 native code.  Many additional command-line arguments are also accepted; they
 control various aspects of code generation and were added automatically by
-linking with the LLVM command-line parsing library.
+linking with the LLVM command-line parsing library.  {\tt garterc} performs
+linking by calling {\tt clang} rather than {\tt ld} itself; this is done because
+the locations of various libraries and object files (such as the C runtime
+startup objects that call {\tt main()}) are system-specific and cannot easily be
+determined.\footnote{The Rust compiler\cite{rust} actually ran into the same
+    problem and also uses {\tt clang} for linking.}
 
 Figure \ref{fig:test} shows an example of the optimized LLVM IR that {\tt
 garterc} produces from an input file.  Although it is a simple example, it shows

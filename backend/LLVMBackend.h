@@ -31,7 +31,7 @@ class LLVMBackend : public Backend {
 	llvm::Function *generateFunctionPrototype(const FunctionDefinitionAST & func);
 	llvm::Function *generateFunctionBodyCode(const FunctionDefinitionAST & func,
 						 bool toplevel = false);
-	bool generateProgramCode(const ProgramAST & program);
+	bool generateProgramIR(const ProgramAST & program);
 	bool compileProgram(const ProgramAST & program,
 			    const char *out_filename, bool obj_output);
 

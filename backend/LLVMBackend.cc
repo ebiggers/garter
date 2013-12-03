@@ -695,7 +695,7 @@ Function *LLVMBackend::generateFunctionBodyCode(const FunctionDefinitionAST & fu
 	return f;
 }
 
-bool LLVMBackend::generateProgramCode(const ProgramAST & program)
+bool LLVMBackend::generateProgramIR(const ProgramAST & program)
 {
 	// Generate prototypes for all functions
 	for (auto itemptr : program.TopLevelItems) {
@@ -749,7 +749,7 @@ bool LLVMBackend::compileProgram(const ProgramAST & program,
 	std::unique_ptr<TargetMachine> mach;
 	PassManager mgr;
 
-	if (!generateProgramCode(program))
+	if (!generateProgramIR(program))
 		return false;
 
 	/* XXX: llvm::sys::fs::F_Binary flag should be used to open the output
