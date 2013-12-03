@@ -8,7 +8,7 @@ extern def __garter_exponentiate(base, exponent):
 			return 0;
 		endif
 	else:
-		return __garter_exponentiate(base, exponent / 2) *
-		       __garter_exponentiate(base, (exponent + 1) / 2);
+		return base ** (exponent / 2) *
+		       base ** ((exponent + 1) / 2);
 	endif
 enddef
